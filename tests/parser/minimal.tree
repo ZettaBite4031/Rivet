@@ -1,0 +1,17 @@
+CompilationUnit
+  FunctionDefinition
+    Type
+      IntKeyword "int"
+    Identifier "main"
+    ParameterList
+      OpenParen "("
+      CloseParen ")"
+    BlockStatement
+      OpenBrace "{"
+      ReturnStatement
+        ReturnKeyword "return"
+        IntegerLiteralExpression
+          IntegerLiteral "42"
+        Semicolon ";"
+      CloseBrace "}"
+  EndOfFile ""

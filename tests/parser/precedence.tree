@@ -1,0 +1,13 @@
+CompilationUnit
+  FunctionDefinition main -> int
+    BlockStatement
+      ReturnStatement
+        BinaryExpression Minus
+          BinaryExpression Plus
+            IntegerLiteralExpression 1
+            BinaryExpression Star
+              IntegerLiteralExpression 2
+              IntegerLiteralExpression 3
+          BinaryExpression Slash
+            IntegerLiteralExpression 4
+            IntegerLiteralExpression 2

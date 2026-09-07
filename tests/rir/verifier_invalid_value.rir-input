@@ -1,0 +1,6 @@
+function int @main()
+{
+entry:
+    int $0 = add $1, $2
+    return $0
+}

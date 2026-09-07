@@ -1,0 +1,10 @@
+CompilationUnit
+  FunctionDefinition broken -> int
+    BlockStatement
+      ReturnStatement
+        UnaryExpression Plus
+          ErrorExpression <missing>
+  FunctionDefinition main -> int
+    BlockStatement
+      ReturnStatement
+        IntegerLiteralExpression 42

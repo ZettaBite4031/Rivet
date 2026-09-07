@@ -1,0 +1,20 @@
+module Specimens.Pointers;
+
+void clear(Span<byte> bytes)
+{
+    mut byte& cursor = bytes.begin();
+    byte& end = bytes.end();
+
+    while cursor != end
+    {
+        *cursor = 0;
+        cursor += 1;
+    }
+}
+
+byte* expose(Span<byte> bytes)
+{
+    byte& checked = bytes.begin();
+    return checked.raw();
+}
+

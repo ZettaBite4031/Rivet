@@ -1,0 +1,9 @@
+int broken()
+{
+    return +;
+}
+
+int main()
+{
+    return 42;
+}

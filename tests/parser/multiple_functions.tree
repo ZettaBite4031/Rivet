@@ -1,0 +1,9 @@
+CompilationUnit
+  FunctionDefinition helper -> int
+    BlockStatement
+      ReturnStatement
+        IntegerLiteralExpression 1
+  FunctionDefinition main -> int
+    BlockStatement
+      ReturnStatement
+        IntegerLiteralExpression 42

@@ -1,0 +1,20 @@
+module Specimens.CompileTime;
+
+comptime bool diagnostics = Build.option<bool>("diagnostics", false);
+
+#if diagnostics
+{
+    void report(string message)
+    {
+        Compile.log(message);
+    }
+}
+#else
+{
+    void report(string message)
+    {
+    }
+}
+
+comptime Array<int> squares = #run generate_squares(256);
+

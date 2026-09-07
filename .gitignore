@@ -1,0 +1,110 @@
+# ==============================================================================
+# Rivet / rivetc0
+# ==============================================================================
+
+# SCons output and state
+build/
+out/
+dist/
+.sconsign.dblite
+.sconsign.*
+.scons-cache/
+
+# C and C++ compilation products
+*.o
+*.obj
+*.lo
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.dll.a
+*.exe
+*.out
+*.app
+*.pdb
+*.ilk
+*.exp
+
+# Dependency and module artifacts
+*.d
+*.dep
+*.gch
+*.pch
+*.pcm
+*.ifc
+*.mod
+
+# Debugging, profiling, sanitizers, and coverage
+core
+core.*
+vgcore.*
+*.dSYM/
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+*.gcov
+coverage/
+htmlcov/
+
+# Compiler and language-server caches
+.cache/
+.clangd/
+.ccls-cache/
+compile_commands.json
+
+# Test output
+Testing/Temporary/
+test-results/
+*.log
+
+# Python helpers occasionally used by SCons or tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# VS Code: allow intentional shared project configuration
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
+
+# Other editors and IDEs
+.idea/
+*.code-workspace
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# Operating-system noise
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Local environment and machine-specific overrides
+.env
+.env.*
+!.env.example
+local.scons
+site_scons/local/
+
+# Downloaded dependencies and scratch space
+vendor-cache/
+.tmp/
+tmp/
+
+# Keep source-level RIR/LIR fixtures and package lockfiles tracked. Generated
+# instances should live under build/ or out/, which are already ignored.

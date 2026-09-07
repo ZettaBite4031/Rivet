@@ -1,0 +1,14 @@
+function int @main()
+{
+entry:
+    int $0 = const 1
+    int $1 = const 2
+    int $2 = const 3
+    int $3 = multiply $1, $2
+    int $4 = add $0, $3
+    int $5 = const 4
+    int $6 = const 2
+    int $7 = divide $5, $6
+    int $8 = subtract $4, $7
+    return $8
+}

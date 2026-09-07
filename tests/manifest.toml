@@ -1,0 +1,171 @@
+version = 1
+
+# Exit statuses are provisional test-harness conventions.
+[exit_status]
+success = 0
+compile_error = 1
+internal_error = 2
+
+[[case]]
+name = "lexer_empty"
+mode = "tokens"
+input = "lexer/empty.rivet"
+expect = "lexer/empty.tokens"
+
+[[case]]
+name = "lexer_minimal"
+mode = "tokens"
+input = "lexer/minimal.rivet"
+expect = "lexer/minimal.tokens"
+
+[[case]]
+name = "lexer_keywords_identifiers"
+mode = "tokens"
+input = "lexer/keywords_identifiers.rivet"
+expect = "lexer/keywords_identifiers.tokens"
+
+[[case]]
+name = "lexer_comments_whitespace"
+mode = "tokens"
+input = "lexer/comments_whitespace.rivet"
+expect = "lexer/comments_whitespace.tokens"
+
+[[case]]
+name = "lexer_invalid_character"
+mode = "tokens"
+input = "lexer/invalid_character.rivet"
+expect = "lexer/invalid_character.tokens"
+diagnostics = "lexer/invalid_character.diag"
+exit = "compile_error"
+
+[[case]]
+name = "parser_minimal"
+mode = "syntax"
+input = "parser/minimal.rivet"
+expect = "parser/minimal.tree"
+
+[[case]]
+name = "parser_precedence"
+mode = "syntax"
+input = "parser/precedence.rivet"
+expect = "parser/precedence.tree"
+
+[[case]]
+name = "parser_parentheses_unary"
+mode = "syntax"
+input = "parser/parentheses_unary.rivet"
+expect = "parser/parentheses_unary.tree"
+
+[[case]]
+name = "parser_multiple_functions"
+mode = "syntax"
+input = "parser/multiple_functions.rivet"
+expect = "parser/multiple_functions.tree"
+
+[[case]]
+name = "parser_missing_semicolon"
+mode = "syntax"
+input = "diagnostics/missing_semicolon.rivet"
+expect = "diagnostics/missing_semicolon.tree"
+diagnostics = "diagnostics/missing_semicolon.diag"
+exit = "compile_error"
+
+[[case]]
+name = "parser_missing_expression"
+mode = "syntax"
+input = "diagnostics/missing_expression.rivet"
+expect = "diagnostics/missing_expression.tree"
+diagnostics = "diagnostics/missing_expression.diag"
+exit = "compile_error"
+
+[[case]]
+name = "parser_recovery_next_function"
+mode = "syntax"
+input = "diagnostics/recovery_next_function.rivet"
+expect = "diagnostics/recovery_next_function.tree"
+diagnostics = "diagnostics/recovery_next_function.diag"
+exit = "compile_error"
+
+[[case]]
+name = "binding_main"
+mode = "check"
+input = "binding/main.rivet"
+expect = "binding/main.bound"
+
+[[case]]
+name = "binding_duplicate_function"
+mode = "check"
+input = "binding/duplicate_function.rivet"
+diagnostics = "binding/duplicate_function.diag"
+exit = "compile_error"
+
+[[case]]
+name = "binding_missing_main"
+mode = "check"
+input = "binding/missing_main.rivet"
+diagnostics = "binding/missing_main.diag"
+exit = "compile_error"
+
+[[case]]
+name = "binding_literal_overflow"
+mode = "check"
+input = "binding/literal_overflow.rivet"
+diagnostics = "binding/literal_overflow.diag"
+exit = "compile_error"
+
+[[case]]
+name = "rir_arithmetic"
+mode = "rir"
+input = "rir/arithmetic.rivet"
+expect = "rir/arithmetic.rir"
+
+[[case]]
+name = "rir_unary"
+mode = "rir"
+input = "rir/unary.rivet"
+expect = "rir/unary.rir"
+
+[[case]]
+name = "rir_verifier_missing_terminator"
+mode = "verify-rir"
+input = "rir/verifier_missing_terminator.rir-input"
+diagnostics = "rir/verifier_missing_terminator.diag"
+exit = "internal_error"
+
+[[case]]
+name = "rir_verifier_invalid_value"
+mode = "verify-rir"
+input = "rir/verifier_invalid_value.rir-input"
+diagnostics = "rir/verifier_invalid_value.diag"
+exit = "internal_error"
+
+[[case]]
+name = "execution_answer"
+mode = "run"
+input = "execution/answer.rivet"
+expect = "execution/answer.run"
+
+[[case]]
+name = "execution_precedence"
+mode = "run"
+input = "execution/precedence.rivet"
+expect = "execution/precedence.run"
+
+[[case]]
+name = "execution_parentheses"
+mode = "run"
+input = "execution/parentheses.rivet"
+expect = "execution/parentheses.run"
+
+[[case]]
+name = "execution_negative"
+mode = "run"
+input = "execution/negative.rivet"
+expect = "execution/negative.run"
+
+[[case]]
+name = "execution_division_by_zero"
+mode = "run"
+input = "execution/division_by_zero.rivet"
+diagnostics = "execution/division_by_zero.diag"
+exit = "compile_error"

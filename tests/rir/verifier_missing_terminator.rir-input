@@ -1,0 +1,5 @@
+function int @main()
+{
+entry:
+    int $0 = const 42
+}

@@ -1,0 +1,22 @@
+module Specimens.Counter;
+
+import Lattice.Application;
+import Lattice.Binding.Observable;
+
+class CounterModel
+{
+    public int count by Observable(0);
+
+    public void increment()
+    {
+        count += 1;
+    }
+}
+
+class CounterApp extends Application
+{
+    public void starting(StartupEvent event)
+    {
+    }
+}
+

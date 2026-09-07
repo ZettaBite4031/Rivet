@@ -1,0 +1,6 @@
+CompilationUnit
+  FunctionDefinition main -> int
+    BlockStatement
+      ReturnStatement
+        ErrorExpression <missing>
+        Semicolon ";"

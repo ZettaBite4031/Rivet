@@ -1,0 +1,30 @@
+module Specimens.LanguageSurface;
+
+import Rivet.Console;
+import Lattice.Math.{Vector2, Vector3};
+
+@derive(Serializable)
+class Aircraft
+{
+    public string callsign;
+    private mut float fuel = 100.0;
+
+    init(string callsign)
+    {
+        this.callsign = callsign;
+    }
+
+    public void refuel(float amount)
+    {
+        fuel += amount;
+    }
+}
+
+int main(Array<string> arguments)
+{
+    Aircraft aircraft = Aircraft("TORI-1");
+    aircraft.refuel(10.0);
+    Console.write_line(aircraft.callsign);
+    return 0;
+}
+

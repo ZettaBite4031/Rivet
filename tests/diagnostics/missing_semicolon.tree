@@ -1,0 +1,6 @@
+CompilationUnit
+  FunctionDefinition main -> int
+    BlockStatement
+      ReturnStatement
+        IntegerLiteralExpression 42
+        Semicolon <missing>

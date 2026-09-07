@@ -1,0 +1,9 @@
+function int @main()
+{
+entry:
+    int $0 = const 40
+    int $1 = const 2
+    int $2 = add $0, $1
+    int $3 = negate $2
+    return $3
+}
