@@ -17,7 +17,7 @@ int main() {
 
         const bool diagnostics_succeeded = Rivet::Tests::RunDiagnosticTests();
 
-        if (!source_succeeded | !diagnostics_succeeded) {
+        if (!source_succeeded || !diagnostics_succeeded) {
             std::cerr << "\nBootstrap tests failed.\n";
             return EXIT_FAILURE;
         }
