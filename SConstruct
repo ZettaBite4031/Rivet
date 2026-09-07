@@ -21,7 +21,7 @@ environment = Environment(variables=options, ENV={"PATH": os.environ.get("PATH",
 Help(options.GenerateHelpText(environment))
 
 if environment["compiler"] == "gcc":
-    environment.Replace(CC=f"gcc-{GCC_VERSION}", CXX=f"g++-{GCC_VERSION}", LINK=f"g++={GCC_VERSION}")
+    environment.Replace(CC=f"gcc-{GCC_VERSION}", CXX=f"g++-{GCC_VERSION}", LINK=f"g++-{GCC_VERSION}")
 elif environment["compiler"] == "clang":
     libgcc_path = subprocess.check_output([f"gcc-{GCC_VERSION}", "-print-libgcc-file-name"], text=True).strip()
     gcc_install_dir = os.path.dirname(libgcc_path)
@@ -47,7 +47,7 @@ if environment["sanitize"]:
     environment.AppendUnique(CXXFLAGS=sanitizer_flags, LINKFLAGS=sanitizer_flags)
 
 project_root = environment.Dir("#").abspath
-build_root = environment.Dir(f"#/build/{environment['mode']}").abspath
+build_root = environment.Dir(f"#/build/{environment['compiler']}/{environment['mode']}").abspath
 
 environment.AppendUnique(CPPPATH=[environment.Dir("#/src")])
 
