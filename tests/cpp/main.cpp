@@ -4,14 +4,20 @@
 
 namespace Rivet::Tests {
     [[nodiscard]] bool RunSourceFileTests();
+    [[nodiscard]] bool RunDiagnosticTests();
 }
 
 int main() {
     std::cout << "rivetc0 bootstrap tests\n\n";
 
     try {
-        const bool succeeded = Rivet::Tests::RunSourceFileTests();
-        if (!succeeded) {
+        const bool source_succeeded = Rivet::Tests::RunSourceFileTests();
+
+        std::cout << '\n';
+
+        const bool diagnostics_succeeded = Rivet::Tests::RunDiagnosticTests();
+
+        if (!source_succeeded | !diagnostics_succeeded) {
             std::cerr << "\nBootstrap tests failed.\n";
             return EXIT_FAILURE;
         }
