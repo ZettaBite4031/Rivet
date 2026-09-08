@@ -5,6 +5,7 @@
 namespace Rivet::Tests {
     [[nodiscard]] bool RunSourceFileTests();
     [[nodiscard]] bool RunDiagnosticTests();
+    [[nodiscard]] bool RunLexerTests();
 }
 
 int main() {
@@ -17,7 +18,11 @@ int main() {
 
         const bool diagnostics_succeeded = Rivet::Tests::RunDiagnosticTests();
 
-        if (!source_succeeded || !diagnostics_succeeded) {
+        std::cout << '\n';
+
+        const bool lexer_succeeded = Rivet::Tests::RunLexerTests();
+
+        if (!source_succeeded || !diagnostics_succeeded || !lexer_succeeded) {
             std::cerr << "\nBootstrap tests failed.\n";
             return EXIT_FAILURE;
         }
