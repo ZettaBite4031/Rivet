@@ -23,7 +23,7 @@ namespace Rivet {
         void Advance() noexcept;
         void SkipTrivia() noexcept;
 
-        [[nodiscard]] Token TokenLexIdentifierOrKeyword();
+        [[nodiscard]] Token LexIdentifierOrKeyword();
 
         [[nodiscard]] Token LexIntegerLiteral();
 

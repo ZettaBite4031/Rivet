@@ -15,7 +15,7 @@ namespace Rivet {
         if (AtEnd()) 
             return Token{ .Kind = TokenKind::EndOfFile, .Span = m_Source.EofSpan() };
 
-        if (IsIdentifierStart(Current())) return TokenLexIdentifierOrKeyword();
+        if (IsIdentifierStart(Current())) return LexIdentifierOrKeyword();
         if (IsDigit(Current())) return LexIntegerLiteral();
         return LexPunctuationOrInvalid();
     }
@@ -54,7 +54,7 @@ namespace Rivet {
         }
     }
 
-    Token Lexer::TokenLexIdentifierOrKeyword() {
+    Token Lexer::LexIdentifierOrKeyword() {
         const std::size_t beginning = m_Position;
 
         // The caller has established that the first character is valid.
