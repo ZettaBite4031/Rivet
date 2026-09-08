@@ -4,7 +4,7 @@
 
 ## A native language for building close to the machine without living at its mercy.
 
-Rivet combines systems-level ocntrol, a modern compile-time environment, and an approachable application model. It stands alone as a general-purpose language, while fitting naturally into a larger ecosystem.
+Rivet combines systems-level control, a modern compile-time environment, and an approachable application model. It stands alone as a general-purpose language, while fitting naturally into a larger ecosystem.
 
 ![Status](https://img.shields.io/badge/status-bootstrap%20in%20progress-f2a65a?style=flat-square)
 ![Bootstrap](https://img.shields.io/badge/rivetc0-C%2B%2B23-5f7adb?style=flat-square)
