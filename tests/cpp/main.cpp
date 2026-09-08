@@ -6,6 +6,7 @@ namespace Rivet::Tests {
     [[nodiscard]] bool RunSourceFileTests();
     [[nodiscard]] bool RunDiagnosticTests();
     [[nodiscard]] bool RunLexerTests();
+    [[nodiscard]] bool RunParserTests();
 }
 
 int main() {
@@ -22,7 +23,11 @@ int main() {
 
         const bool lexer_succeeded = Rivet::Tests::RunLexerTests();
 
-        if (!source_succeeded || !diagnostics_succeeded || !lexer_succeeded) {
+        std::cout << '\n'; 
+
+        const bool parser_succeeded = Rivet::Tests::RunParserTests();
+
+        if (!source_succeeded || !diagnostics_succeeded || !lexer_succeeded || !parser_succeeded) {
             std::cerr << "\nBootstrap tests failed.\n";
             return EXIT_FAILURE;
         }

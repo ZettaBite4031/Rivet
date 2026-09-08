@@ -16,6 +16,10 @@ namespace Rivet {
 
     enum class DiagnosticCode : std::uint16_t {
         InvalidCharacter = 1,
+
+        UnexpectedToken = 101,
+        MissingToken = 102,
+        ExpectedExpression = 103,
     };
 
     struct Diagnostic {

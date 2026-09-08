@@ -1,46 +1,20 @@
 #include "diagnostics/Diagnostics.hpp"
 #include "source/Source.hpp"
 #include "syntax/Lexer.hpp"
+#include "syntax/Parser.hpp"
+#include "syntax/SyntaxPrinter.hpp"
 #include "syntax/Token.hpp"
 
 #include <cstdlib>
 #include <iostream>
-#include <ostream>
+#include <memory>
+#include <span>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 
 namespace {
-    void WriteQuotedText(std::ostream& output, std::string_view text) {
-        output << '"';
-
-        for (const char character : text) {
-            switch (character) {
-            case '\\': output << "\\\\"; break;
-            case '"' : output << "\\\""; break;
-            case '\0': output << "\\0" ; break;
-            case '\n': output << "\\n" ; break;
-            case '\r': output << "\\r" ; break;
-            case '\t': output << "\\t" ; break;
-            case '\f': output << "\\f" ; break;
-            case '\v': output << "\\v" ; break;
-            default:   output.put(character); break;
-            }
-        }
-
-        output << '"';
-    }
-
-    void WriteToken(std::ostream& output, const Rivet::SourceFile& source, const Rivet::Token& token) {
-        output << Rivet::TokenKindName(token.Kind)
-            << ' ' << token.Span.Offset
-            << ' ' << token.Span.Length
-            << ' ';
-
-        WriteQuotedText(output, token.Text(source));
-        output << '\n';
-    }
-
     void WriteUsage(std::ostream& output, std::string_view executable) {
         output << "usage: " << executable
             << " tokens <source-file>\n";
@@ -54,7 +28,11 @@ int main(int argc, char** argv) {
     }
 
     const std::string_view command{ argv[1] };
-    if (command != "tokens") {
+    
+    const bool writes_tokens = command == "tokens";
+    const bool writes_syntax = command == "syntax";
+
+    if (!writes_tokens && !writes_syntax) {
         std::cerr << "unknown command: " << command << '\n';
         WriteUsage(std::cerr, argv[0]);
         return EXIT_FAILURE;
@@ -71,10 +49,18 @@ int main(int argc, char** argv) {
     Rivet::DiagnosticBag diagnostics;
 
     const std::vector<Rivet::Token> tokens = Rivet::LexAll(source, diagnostics);
-    for (const Rivet::Token& token : tokens) 
-        WriteToken(std::cout, source, token);
+    const std::span<const Rivet::Token> token_span{ tokens };
 
-    if (!diagnostics.Empty())
+    if (writes_tokens) Rivet::WriteTokenDump(std::cout, source, token_span);
+    else {
+        Rivet::Parser parser{ token_span, diagnostics };
+
+        const std::unique_ptr<Rivet::CompilationUnitSyntax> root = parser.ParseCompilationUnit();
+
+        Rivet::WriteSyntaxTree(std::cout, source, *root);
+    }
+
+    if (!diagnostics.Empty()) 
         std::cerr << Rivet::RenderCompactDiagnostics(source, diagnostics.Items());
 
     return diagnostics.HasErrors() ? EXIT_FAILURE : EXIT_SUCCESS;
