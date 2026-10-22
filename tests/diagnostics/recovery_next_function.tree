@@ -1,10 +1,33 @@
 CompilationUnit
-  FunctionDefinition broken -> int
+  ModuleDeclaration
+    ModuleKeyword "module"
+    Identifier "bootstrap"
+    Semicolon ";"
+  FunctionDefinition
+    IntKeyword "int"
+    Identifier "broken"
+    OpenParen "("
+    CloseParen ")"
     BlockStatement
+      OpenBrace "{"
       ReturnStatement
-        UnaryExpression Plus
+        ReturnKeyword "return"
+        UnaryExpression
+          Plus "+"
           ErrorExpression <missing>
-  FunctionDefinition main -> int
+        Semicolon ";"
+      CloseBrace "}"
+  FunctionDefinition
+    IntKeyword "int"
+    Identifier "main"
+    OpenParen "("
+    CloseParen ")"
     BlockStatement
+      OpenBrace "{"
       ReturnStatement
-        IntegerLiteralExpression 42
+        ReturnKeyword "return"
+        LiteralExpression
+          IntegerLiteral "42"
+        Semicolon ";"
+      CloseBrace "}"
+  EndOfFile ""

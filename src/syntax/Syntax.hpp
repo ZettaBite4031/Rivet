@@ -6,12 +6,14 @@
 #include <cstdint>
 #include <iosfwd>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
 namespace Rivet {
     enum class SyntaxKind : std::uint8_t {
         CompilationUnit,
+        ModuleDeclaration,
         FunctionDefinition,
         BlockStatement,
         ReturnStatement,
@@ -35,6 +37,18 @@ namespace Rivet {
 
     class StatementSyntax : public SyntaxNode {};
     class ExpressionSyntax : public SyntaxNode {};
+
+    class ModuleDeclarationSyntax final : public SyntaxNode {
+    public:
+        ModuleDeclarationSyntax(Token keyword, std::vector<Token> path_tokens, Token semicolon) noexcept;
+        [[nodiscard]] SyntaxKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        [[nodiscard]] std::string Name(const SourceFile& source) const;
+
+        Token ModuleKeyword;
+        std::vector<Token> PathTokens;
+        Token SemicolonToken;
+    };
 
     class LiteralExpressionSyntax final : public ExpressionSyntax {
     public:
@@ -131,11 +145,13 @@ namespace Rivet {
 
     class CompilationUnitSyntax final : public SyntaxNode {
     public:
-        CompilationUnitSyntax(std::vector<std::unique_ptr<FunctionDefinitionSyntax>> functions, Token end_of_file_token) noexcept;
+        CompilationUnitSyntax(std::unique_ptr<ModuleDeclarationSyntax> module,
+            std::vector<std::unique_ptr<FunctionDefinitionSyntax>> functions, Token end_of_file_token) noexcept;
 
         [[nodiscard]] SyntaxKind Kind() const noexcept override;
         [[nodiscard]] SourceSpan Span() const noexcept override;
 
+        std::unique_ptr<ModuleDeclarationSyntax> Module;
         std::vector<std::unique_ptr<FunctionDefinitionSyntax>> Functions;
         Token EndOfFileToken;
     };

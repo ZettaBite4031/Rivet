@@ -1,1 +1,1 @@
-E0203 3:12-3:22 integer literal '2147483648' is not representable as 'int'
+E0203 5:12-5:22 integer literal '2147483648' is not representable as 'int'

@@ -15,6 +15,7 @@ namespace Rivet {
         case TokenKind::Identifier:     return "Identifier";
         case TokenKind::IntegerLiteral: return "IntegerLiteral";
 
+        case TokenKind::ModuleKeyword:   return "ModuleKeyword";
         case TokenKind::IntKeyword:     return "IntKeyword";
         case TokenKind::ReturnKeyword:  return "ReturnKeyword";
 
@@ -23,6 +24,7 @@ namespace Rivet {
         case TokenKind::OpenBrace:      return "OpenBrace";
         case TokenKind::CloseBrace:     return "CloseBrace";
         case TokenKind::Semicolon:      return "Semicolon";
+        case TokenKind::Dot:            return "Dot";
 
         case TokenKind::Plus:           return "Plus";
         case TokenKind::Minus:          return "Minus";

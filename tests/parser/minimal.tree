@@ -1,16 +1,18 @@
 CompilationUnit
+  ModuleDeclaration
+    ModuleKeyword "module"
+    Identifier "bootstrap"
+    Semicolon ";"
   FunctionDefinition
-    Type
-      IntKeyword "int"
+    IntKeyword "int"
     Identifier "main"
-    ParameterList
-      OpenParen "("
-      CloseParen ")"
+    OpenParen "("
+    CloseParen ")"
     BlockStatement
       OpenBrace "{"
       ReturnStatement
         ReturnKeyword "return"
-        IntegerLiteralExpression
+        LiteralExpression
           IntegerLiteral "42"
         Semicolon ";"
       CloseBrace "}"

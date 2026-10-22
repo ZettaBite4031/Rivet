@@ -25,6 +25,8 @@ namespace Rivet {
 
         Token MatchToken(TokenKind expected, std::string_view message);
 
+        [[nodiscard]] std::unique_ptr<ModuleDeclarationSyntax> ParseModuleDeclaration();
+
         [[nodiscard]] std::unique_ptr<FunctionDefinitionSyntax> ParseFunctionDefinition();
         [[nodiscard]] std::unique_ptr<BlockStatementSyntax> ParseBlockStatement();
         [[nodiscard]] std::unique_ptr<StatementSyntax> ParseStatement();

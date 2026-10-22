@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 from SCons.Script import Action, Alias, AlwaysBuild, Import, Return
 
@@ -66,7 +67,16 @@ if test_sources:
     test_objects = compile_objects(env, test_sources, category="tests")
     test_binary = env.Program(target=str(binary_root / "rivetc0-tests"), source=core_objects + test_objects)
     Alias("tests", test_binary)
-    test_alias = Alias("test", test_binary, Action('"$SOURCE"', cmdstr="Running rivetc0 tests"))
+    def run_golden(target, source, env):
+        return subprocess.call([
+            "python3", str(project_path / "tests" / "golden.py"),
+            str(compiler[0]),
+        ], cwd=str(project_path))
+
+    test_alias = Alias("test", list(test_binary) + list(compiler), [
+        Action('"$SOURCE"', cmdstr="Running rivetc0 tests"),
+        Action(run_golden, cmdstr="Running rivetc0 golden fixtures"),
+    ])
     AlwaysBuild(test_alias)
 else:
     # The alias remains valid before the first C++ test exists.

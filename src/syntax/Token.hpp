@@ -14,6 +14,7 @@ namespace Rivet {
         Identifier,
         IntegerLiteral,
 
+        ModuleKeyword,
         IntKeyword,
         ReturnKeyword,
 
@@ -22,6 +23,7 @@ namespace Rivet {
         OpenBrace,
         CloseBrace,
         Semicolon,
+        Dot,
 
         Plus,
         Minus,

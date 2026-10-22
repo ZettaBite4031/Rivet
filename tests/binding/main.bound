@@ -1,4 +1,4 @@
-Module <bootstrap>
+Module bootstrap
   Function main() -> int [entry]
     Block
       Return : int

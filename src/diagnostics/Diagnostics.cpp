@@ -11,6 +11,7 @@ namespace {
         switch (severity) {
             case Rivet::DiagnosticSeverity::Error: return 'E';
             case Rivet::DiagnosticSeverity::Warning: return 'W';
+            case Rivet::DiagnosticSeverity::Note: return 'N';
         }
         return '?';
     }

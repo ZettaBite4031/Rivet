@@ -1,9 +1,32 @@
 CompilationUnit
-  FunctionDefinition helper -> int
+  ModuleDeclaration
+    ModuleKeyword "module"
+    Identifier "bootstrap"
+    Semicolon ";"
+  FunctionDefinition
+    IntKeyword "int"
+    Identifier "helper"
+    OpenParen "("
+    CloseParen ")"
     BlockStatement
+      OpenBrace "{"
       ReturnStatement
-        IntegerLiteralExpression 1
-  FunctionDefinition main -> int
+        ReturnKeyword "return"
+        LiteralExpression
+          IntegerLiteral "1"
+        Semicolon ";"
+      CloseBrace "}"
+  FunctionDefinition
+    IntKeyword "int"
+    Identifier "main"
+    OpenParen "("
+    CloseParen ")"
     BlockStatement
+      OpenBrace "{"
       ReturnStatement
-        IntegerLiteralExpression 42
+        ReturnKeyword "return"
+        LiteralExpression
+          IntegerLiteral "42"
+        Semicolon ";"
+      CloseBrace "}"
+  EndOfFile ""

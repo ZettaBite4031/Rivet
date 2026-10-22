@@ -12,6 +12,7 @@ namespace Rivet {
     enum class DiagnosticSeverity : std::uint8_t {
         Error, 
         Warning,
+        Note,
     };
 
     enum class DiagnosticCode : std::uint16_t {
@@ -20,6 +21,13 @@ namespace Rivet {
         UnexpectedToken = 101,
         MissingToken = 102,
         ExpectedExpression = 103,
+        MissingModule = 104,
+        DuplicateModule = 105,
+
+        DuplicateFunction = 201,
+        MissingEntryPoint = 202,
+        IntegerLiteralOutOfRange = 203,
+        MissingReturn = 204,
     };
 
     struct Diagnostic {

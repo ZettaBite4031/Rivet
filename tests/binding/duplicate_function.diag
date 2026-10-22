@@ -1,2 +1,2 @@
-E0201 6:5-6:9 function 'main()' is already defined
-N0201 1:5-1:9 previous definition is here
+E0201 8:5-8:9 function 'main()' is already defined
+N0201 3:5-3:9 previous definition is here

@@ -1,6 +1,19 @@
 CompilationUnit
-  FunctionDefinition main -> int
+  ModuleDeclaration
+    ModuleKeyword "module"
+    Identifier "bootstrap"
+    Semicolon ";"
+  FunctionDefinition
+    IntKeyword "int"
+    Identifier "main"
+    OpenParen "("
+    CloseParen ")"
     BlockStatement
+      OpenBrace "{"
       ReturnStatement
-        IntegerLiteralExpression 42
+        ReturnKeyword "return"
+        LiteralExpression
+          IntegerLiteral "42"
         Semicolon <missing>
+      CloseBrace "}"
+  EndOfFile ""

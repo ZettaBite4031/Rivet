@@ -14,9 +14,25 @@ namespace Rivet {
     }
 
     std::unique_ptr<CompilationUnitSyntax> Parser::ParseCompilationUnit() {
+        std::unique_ptr<ModuleDeclarationSyntax> module;
+        if (Current().Kind == TokenKind::ModuleKeyword) {
+            module = ParseModuleDeclaration();
+        } else {
+            m_Diagnostics.Report(DiagnosticCode::MissingModule, DiagnosticSeverity::Error,
+                Current().Span, "source file must begin with a module declaration");
+            const SourceSpan missing{ .Offset = Current().Span.Offset, .Length = 0 };
+            module = std::make_unique<ModuleDeclarationSyntax>(
+                Token{ TokenKind::ModuleKeyword, missing }, std::vector<Token>{}, Token{ TokenKind::Semicolon, missing });
+        }
         std::vector<std::unique_ptr<FunctionDefinitionSyntax>> functions;
 
         while (Current().Kind != TokenKind::EndOfFile) {
+            if (Current().Kind == TokenKind::ModuleKeyword) {
+                m_Diagnostics.Report(DiagnosticCode::DuplicateModule, DiagnosticSeverity::Error,
+                    Current().Span, "a source file may declare only one module, at the beginning");
+                static_cast<void>(ParseModuleDeclaration());
+                continue;
+            }
             const std::size_t beginning = m_Position;
             functions.push_back(ParseFunctionDefinition());
 
@@ -26,7 +42,19 @@ namespace Rivet {
 
         Token eof = MatchToken(TokenKind::EndOfFile, "expected end of file");
 
-        return std::make_unique<CompilationUnitSyntax>(std::move(functions), eof);
+        return std::make_unique<CompilationUnitSyntax>(std::move(module), std::move(functions), eof);
+    }
+
+    std::unique_ptr<ModuleDeclarationSyntax> Parser::ParseModuleDeclaration() {
+        const Token keyword = ConsumeToken();
+        std::vector<Token> path;
+        path.push_back(MatchToken(TokenKind::Identifier, "expected module name"));
+        while (Current().Kind == TokenKind::Dot) {
+            path.push_back(ConsumeToken());
+            path.push_back(MatchToken(TokenKind::Identifier, "expected module name after '.'"));
+        }
+        const Token semicolon = MatchToken(TokenKind::Semicolon, "expected ';' after module name");
+        return std::make_unique<ModuleDeclarationSyntax>(keyword, std::move(path), semicolon);
     }
 
     std::size_t Parser::TokenIndex(std::size_t distance) const noexcept {

@@ -1,12 +1,34 @@
 CompilationUnit
-  FunctionDefinition main -> int
+  ModuleDeclaration
+    ModuleKeyword "module"
+    Identifier "bootstrap"
+    Semicolon ";"
+  FunctionDefinition
+    IntKeyword "int"
+    Identifier "main"
+    OpenParen "("
+    CloseParen ")"
     BlockStatement
+      OpenBrace "{"
       ReturnStatement
-        BinaryExpression Star
-          UnaryExpression Minus
+        ReturnKeyword "return"
+        BinaryExpression
+          UnaryExpression
+            Minus "-"
             ParenthesizedExpression
-              BinaryExpression Plus
-                IntegerLiteralExpression 1
-                UnaryExpression Plus
-                  IntegerLiteralExpression 2
-          IntegerLiteralExpression 3
+              OpenParen "("
+              BinaryExpression
+                LiteralExpression
+                  IntegerLiteral "1"
+                Plus "+"
+                UnaryExpression
+                  Plus "+"
+                  LiteralExpression
+                    IntegerLiteral "2"
+              CloseParen ")"
+          Star "*"
+          LiteralExpression
+            IntegerLiteral "3"
+        Semicolon ";"
+      CloseBrace "}"
+  EndOfFile ""

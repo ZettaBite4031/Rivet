@@ -1,3 +1,5 @@
+module bootstrap;
+
 int broken()
 {
     return +;

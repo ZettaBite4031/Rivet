@@ -15,6 +15,7 @@ namespace Rivet {
     std::string_view SyntaxKindName(SyntaxKind kind) noexcept {
         switch (kind) {
         case SyntaxKind::CompilationUnit:         return "CompilationUnit";
+        case SyntaxKind::ModuleDeclaration:        return "ModuleDeclaration";
         case SyntaxKind::FunctionDefinition:      return "FunctionDefinition";
         case SyntaxKind::BlockStatement:          return "BlockStatement";
         case SyntaxKind::ReturnStatement:         return "ReturnStatement";
@@ -29,6 +30,21 @@ namespace Rivet {
 
     std::ostream& operator<<(std::ostream& output, SyntaxKind kind) {
         return output << SyntaxKindName(kind);
+    }
+
+    ModuleDeclarationSyntax::ModuleDeclarationSyntax(Token keyword, std::vector<Token> path_tokens, Token semicolon) noexcept
+        : ModuleKeyword(keyword), PathTokens(std::move(path_tokens)), SemicolonToken(semicolon) {}
+
+    SyntaxKind ModuleDeclarationSyntax::Kind() const noexcept { return SyntaxKind::ModuleDeclaration; }
+
+    SourceSpan ModuleDeclarationSyntax::Span() const noexcept {
+        return CoveringSpan(ModuleKeyword.Span, SemicolonToken.Span);
+    }
+
+    std::string ModuleDeclarationSyntax::Name(const SourceFile& source) const {
+        std::string result;
+        for (const Token& token : PathTokens) result += token.Text(source);
+        return result;
     }
 
      LiteralExpressionSyntax::LiteralExpressionSyntax(Token literal_token) noexcept
@@ -119,8 +135,9 @@ namespace Rivet {
         return CoveringSpan(TypeToken.Span, Body->Span());
     }
 
-    CompilationUnitSyntax::CompilationUnitSyntax(std::vector<std::unique_ptr<FunctionDefinitionSyntax>> functions, Token eof_token) noexcept
-        : Functions(std::move(functions)), EndOfFileToken(eof_token) {}
+    CompilationUnitSyntax::CompilationUnitSyntax(std::unique_ptr<ModuleDeclarationSyntax> module,
+        std::vector<std::unique_ptr<FunctionDefinitionSyntax>> functions, Token eof_token) noexcept
+        : Module(std::move(module)), Functions(std::move(functions)), EndOfFileToken(eof_token) { assert(Module != nullptr); }
 
     SyntaxKind CompilationUnitSyntax::Kind() const noexcept {
         return SyntaxKind::CompilationUnit;

@@ -27,7 +27,7 @@ namespace Rivet::Tests {
         ParsedSource ParseText(std::string text) {
             SourceFile source{
                 "parser-test.rivet",
-                std::move(text)
+                "module parser_test;\n" + text
             };
 
             DiagnosticBag diagnostics;
@@ -283,7 +283,7 @@ namespace Rivet::Tests {
             REQUIRE_EQ(diagnostic.Message, std::string{ "expected ';' after return expression" });
 
             REQUIRE_EQ(RenderCompactDiagnostics(parsed.Source, parsed.Diagnostics.Items()),
-                std::string{ "E0102 4:1-4:2 expected ';' after return expression\n" });
+                std::string{ "E0102 5:1-5:2 expected ';' after return expression\n" });
         }
 
         void ProducesErrorExpressionWhenMissing() {
@@ -317,7 +317,7 @@ namespace Rivet::Tests {
             REQUIRE_EQ(diagnostic.Message, std::string{ "expected expression" });
 
             REQUIRE_EQ(RenderCompactDiagnostics(parsed.Source, parsed.Diagnostics.Items()),
-                std::string{ "E0103 3:12-3:13 expected expression\n" });
+                std::string{ "E0103 4:12-4:13 expected expression\n" });
         }
 
         void RecoversAfterMissingUnaryOperand() {
@@ -356,7 +356,7 @@ namespace Rivet::Tests {
             RequireLiteralText(parsed, *main_return.Expression, "42");
 
             REQUIRE_EQ(RenderCompactDiagnostics(parsed.Source, parsed.Diagnostics.Items()),
-                std::string{ "E0103 3:13-3:14 expected expression after unary operator '+'\n" });
+                std::string{ "E0103 4:13-4:14 expected expression after unary operator '+'\n" });
         }
 
         void RecoversNextFunctionAfterMissingBrace() {
@@ -390,7 +390,7 @@ namespace Rivet::Tests {
             RequireLiteralText(parsed, *main_return.Expression, "42");
 
             REQUIRE_EQ(RenderCompactDiagnostics(parsed.Source, parsed.Diagnostics.Items()),
-                std::string{ "E0102 5:1-5:4 expected '}' to close function body\n" });
+                std::string{ "E0102 6:1-6:4 expected '}' to close function body\n" });
         }
     }
 

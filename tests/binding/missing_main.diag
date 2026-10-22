@@ -1,1 +1,1 @@
-E0202 1:1-5:1 executable does not define 'int main()'
+E0202 1:1-7:1 executable does not define 'int main()'

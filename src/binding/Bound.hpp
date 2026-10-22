@@ -1,0 +1,214 @@
+#pragma once
+
+#include "source/Source.hpp"
+
+#include <cstdint>
+#include <iosfwd>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace Rivet {
+    enum class TypeKind : std::uint8_t {
+        Error,
+        Int,
+    };
+
+    struct TypeSymbol final {
+        TypeKind Kind;
+        std::string_view Name;
+    };
+
+    namespace BuiltinTypes {
+        inline constexpr TypeSymbol Error{ TypeKind::Error, "<error>" };
+        inline constexpr TypeSymbol Int{ TypeKind::Int, "int" };
+    }
+
+    struct FunctionSymbol final {
+        std::string Name;
+        const TypeSymbol* ReturnType;
+        SourceSpan DeclarationSpan;
+    };
+
+    enum class BoundNodeKind : std::uint8_t {
+        CompilationUnit,
+        Function,
+        BlockStatement,
+        ReturnStatement,
+        ErrorStatement,
+        LiteralExpression,
+        UnaryExpression,
+        BinaryExpression,
+        ErrorExpression,
+    };
+
+    enum class BoundUnaryOperatorKind : std::uint8_t {
+        Identity,
+        Negation,
+    };
+
+    enum class BoundBinaryOperatorKind : std::uint8_t {
+        Addition,
+        Subtraction,
+        Multiplication,
+        Division,
+    };
+
+    [[nodiscard]] std::string_view BoundNodeKindName(BoundNodeKind kind) noexcept;
+    [[nodiscard]] std::string_view BoundUnaryOperatorKindName(BoundUnaryOperatorKind kind) noexcept;
+    [[nodiscard]] std::string_view BoundBinaryOperatorKindName(BoundBinaryOperatorKind kind) noexcept;
+
+    std::ostream& operator<<(std::ostream& output, BoundNodeKind kind);
+    std::ostream& operator<<(std::ostream& output, BoundUnaryOperatorKind kind);
+    std::ostream& operator<<(std::ostream& output, BoundBinaryOperatorKind kind);
+
+    class BoundNode {
+    public:
+        virtual ~BoundNode() = default;
+        [[nodiscard]] virtual BoundNodeKind Kind() const noexcept = 0;
+        [[nodiscard]] virtual SourceSpan Span() const noexcept = 0;
+    };
+
+    class BoundStatement : public BoundNode {};
+
+    class BoundExpression : public BoundNode {
+    public:
+        [[nodiscard]] virtual const TypeSymbol& Type() const noexcept = 0;
+    };
+
+    class BoundLiteralExpression final : public BoundExpression {
+    public:
+        BoundLiteralExpression(std::int32_t value, SourceSpan span) noexcept;
+
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        [[nodiscard]] const TypeSymbol& Type() const noexcept override;
+
+        std::int32_t Value;
+        SourceSpan LiteralSpan;
+    };
+
+    class BoundUnaryExpression final : public BoundExpression {
+    public:
+        BoundUnaryExpression(
+            BoundUnaryOperatorKind operator_kind,
+            SourceSpan operator_span,
+            std::unique_ptr<BoundExpression> operand,
+            SourceSpan expression_span
+        ) noexcept;
+
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        [[nodiscard]] const TypeSymbol& Type() const noexcept override;
+
+        BoundUnaryOperatorKind OperatorKind;
+        SourceSpan OperatorSpan;
+        std::unique_ptr<BoundExpression> Operand;
+        SourceSpan ExpressionSpan;
+    };
+
+    class BoundBinaryExpression final : public BoundExpression {
+    public:
+        BoundBinaryExpression(
+            std::unique_ptr<BoundExpression> left,
+            BoundBinaryOperatorKind operator_kind,
+            SourceSpan operator_span,
+            std::unique_ptr<BoundExpression> right,
+            SourceSpan expression_span
+        ) noexcept;
+
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        [[nodiscard]] const TypeSymbol& Type() const noexcept override;
+
+        std::unique_ptr<BoundExpression> Left;
+        BoundBinaryOperatorKind OperatorKind;
+        SourceSpan OperatorSpan;
+        std::unique_ptr<BoundExpression> Right;
+        SourceSpan ExpressionSpan;
+    };
+
+    class BoundErrorExpression final : public BoundExpression {
+    public:
+        explicit BoundErrorExpression(SourceSpan span) noexcept;
+
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        [[nodiscard]] const TypeSymbol& Type() const noexcept override;
+
+        SourceSpan ErrorSpan;
+    };
+
+    class BoundReturnStatement final : public BoundStatement {
+    public:
+        BoundReturnStatement(
+            std::unique_ptr<BoundExpression> expression,
+            SourceSpan span
+        ) noexcept;
+
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+
+        std::unique_ptr<BoundExpression> Expression;
+        SourceSpan StatementSpan;
+    };
+
+    class BoundErrorStatement final : public BoundStatement {
+    public:
+        explicit BoundErrorStatement(SourceSpan span) noexcept;
+
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+
+        SourceSpan ErrorSpan;
+    };
+
+    class BoundBlockStatement final : public BoundStatement {
+    public:
+        BoundBlockStatement(
+            std::vector<std::unique_ptr<BoundStatement>> statements,
+            SourceSpan span
+        ) noexcept;
+
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+
+        std::vector<std::unique_ptr<BoundStatement>> Statements;
+        SourceSpan BlockSpan;
+    };
+
+    class BoundFunction final : public BoundNode {
+    public:
+        BoundFunction(
+            FunctionSymbol symbol,
+            std::unique_ptr<BoundBlockStatement> body,
+            bool is_entry_point,
+            SourceSpan span
+        ) noexcept;
+
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+
+        FunctionSymbol Symbol;
+        std::unique_ptr<BoundBlockStatement> Body;
+        bool IsEntryPoint;
+        SourceSpan FunctionSpan;
+    };
+
+    class BoundCompilationUnit final : public BoundNode {
+    public:
+        BoundCompilationUnit(
+            std::string module_name,
+            std::vector<std::unique_ptr<BoundFunction>> functions,
+            SourceSpan span
+        ) noexcept;
+
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+
+        std::string ModuleName;
+        std::vector<std::unique_ptr<BoundFunction>> Functions;
+        SourceSpan UnitSpan;
+    };
+}

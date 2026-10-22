@@ -64,9 +64,18 @@ namespace {
         switch (node.Kind()) {
             case SyntaxKind::CompilationUnit: {
                 const auto& unit = static_cast<const CompilationUnitSyntax&>(node);
+                WriteNode(output, source, *unit.Module, depth + 1);
                 for (const auto& function : unit.Functions)
                     WriteNode(output, source, *function, depth + 1);
                 WriteTokenLine(output, source, unit.EndOfFileToken, depth + 1);
+                break;
+            }
+
+            case SyntaxKind::ModuleDeclaration: {
+                const auto& module = static_cast<const ModuleDeclarationSyntax&>(node);
+                WriteTokenLine(output, source, module.ModuleKeyword, depth + 1);
+                for (const Token& token : module.PathTokens) WriteTokenLine(output, source, token, depth + 1);
+                WriteTokenLine(output, source, module.SemicolonToken, depth + 1);
                 break;
             }
 
