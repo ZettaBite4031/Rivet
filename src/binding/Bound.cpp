@@ -13,6 +13,8 @@ namespace Rivet {
             case BoundNodeKind::ReturnStatement:   return "ReturnStatement";
             case BoundNodeKind::LocalDeclaration:  return "LocalDeclaration";
             case BoundNodeKind::AssignmentStatement: return "AssignmentStatement";
+            case BoundNodeKind::IfStatement: return "IfStatement";
+            case BoundNodeKind::WhileStatement: return "WhileStatement";
             case BoundNodeKind::ErrorStatement:    return "ErrorStatement";
             case BoundNodeKind::LiteralExpression: return "LiteralExpression";
             case BoundNodeKind::LocalExpression:   return "LocalExpression";
@@ -28,6 +30,7 @@ namespace Rivet {
         switch (kind) {
             case BoundUnaryOperatorKind::Identity: return "Identity";
             case BoundUnaryOperatorKind::Negation: return "Negate";
+            case BoundUnaryOperatorKind::Not: return "Not";
         }
         return "Unknown";
     }
@@ -38,6 +41,12 @@ namespace Rivet {
             case BoundBinaryOperatorKind::Subtraction:    return "Subtract";
             case BoundBinaryOperatorKind::Multiplication: return "Multiply";
             case BoundBinaryOperatorKind::Division:       return "Divide";
+            case BoundBinaryOperatorKind::Less:           return "Less";
+            case BoundBinaryOperatorKind::LessEquals:     return "LessEquals";
+            case BoundBinaryOperatorKind::Greater:        return "Greater";
+            case BoundBinaryOperatorKind::GreaterEquals:  return "GreaterEquals";
+            case BoundBinaryOperatorKind::Equals:         return "Equals";
+            case BoundBinaryOperatorKind::NotEquals:      return "NotEquals";
         }
         return "Unknown";
     }
@@ -56,9 +65,10 @@ namespace Rivet {
 
     BoundLiteralExpression::BoundLiteralExpression(
         std::int32_t value,
-        SourceSpan span
+        SourceSpan span,
+        const TypeSymbol* type
     ) noexcept
-        : Value(value), LiteralSpan(span) {}
+        : Value(value), LiteralSpan(span), LiteralType(type) {}
 
     BoundNodeKind BoundLiteralExpression::Kind() const noexcept {
         return BoundNodeKind::LiteralExpression;
@@ -69,18 +79,18 @@ namespace Rivet {
     }
 
     const TypeSymbol& BoundLiteralExpression::Type() const noexcept {
-        return BuiltinTypes::Int;
+        return *LiteralType;
     }
 
-    BoundLocalExpression::BoundLocalExpression(std::size_t local, SourceSpan span) noexcept
-        : Local(local), NameSpan(span) {}
+    BoundLocalExpression::BoundLocalExpression(std::size_t local, SourceSpan span,
+        const TypeSymbol* type) noexcept : Local(local), NameSpan(span), LocalType(type) {}
     BoundNodeKind BoundLocalExpression::Kind() const noexcept { return BoundNodeKind::LocalExpression; }
     SourceSpan BoundLocalExpression::Span() const noexcept { return NameSpan; }
-    const TypeSymbol& BoundLocalExpression::Type() const noexcept { return BuiltinTypes::Int; }
+    const TypeSymbol& BoundLocalExpression::Type() const noexcept { return *LocalType; }
 
-    BoundCallExpression::BoundCallExpression(std::string callee, std::vector<std::unique_ptr<BoundExpression>> arguments, SourceSpan span) noexcept
+    BoundCallExpression::BoundCallExpression(std::string callee,
+        std::vector<std::unique_ptr<BoundExpression>> arguments, SourceSpan span) noexcept
         : Callee(std::move(callee)), Arguments(std::move(arguments)), CallSpan(span) {}
-    
     BoundNodeKind BoundCallExpression::Kind() const noexcept { return BoundNodeKind::CallExpression; }
     SourceSpan BoundCallExpression::Span() const noexcept { return CallSpan; }
     const TypeSymbol& BoundCallExpression::Type() const noexcept { return BuiltinTypes::Int; }
@@ -107,7 +117,7 @@ namespace Rivet {
     }
 
     const TypeSymbol& BoundUnaryExpression::Type() const noexcept {
-        return BuiltinTypes::Int;
+        return OperatorKind == BoundUnaryOperatorKind::Not ? BuiltinTypes::Bool : BuiltinTypes::Int;
     }
 
     BoundBinaryExpression::BoundBinaryExpression(
@@ -135,7 +145,11 @@ namespace Rivet {
     }
 
     const TypeSymbol& BoundBinaryExpression::Type() const noexcept {
-        return BuiltinTypes::Int;
+        return OperatorKind == BoundBinaryOperatorKind::Addition
+            || OperatorKind == BoundBinaryOperatorKind::Subtraction
+            || OperatorKind == BoundBinaryOperatorKind::Multiplication
+            || OperatorKind == BoundBinaryOperatorKind::Division
+            ? BuiltinTypes::Int : BuiltinTypes::Bool;
     }
 
     BoundErrorExpression::BoundErrorExpression(SourceSpan span) noexcept
@@ -207,6 +221,22 @@ namespace Rivet {
     SourceSpan BoundBlockStatement::Span() const noexcept {
         return BlockSpan;
     }
+
+    BoundIfStatement::BoundIfStatement(std::unique_ptr<BoundExpression> condition,
+        std::unique_ptr<BoundBlockStatement> then_block,
+        std::unique_ptr<BoundBlockStatement> else_block, SourceSpan span) noexcept
+        : Condition(std::move(condition)), Then(std::move(then_block)), Else(std::move(else_block)),
+          StatementSpan(span) { assert(Condition && Then); }
+    BoundNodeKind BoundIfStatement::Kind() const noexcept { return BoundNodeKind::IfStatement; }
+    SourceSpan BoundIfStatement::Span() const noexcept { return StatementSpan; }
+
+    BoundWhileStatement::BoundWhileStatement(std::unique_ptr<BoundExpression> condition,
+        std::unique_ptr<BoundBlockStatement> body, SourceSpan span) noexcept
+        : Condition(std::move(condition)), Body(std::move(body)), StatementSpan(span) {
+        assert(Condition && Body);
+    }
+    BoundNodeKind BoundWhileStatement::Kind() const noexcept { return BoundNodeKind::WhileStatement; }
+    SourceSpan BoundWhileStatement::Span() const noexcept { return StatementSpan; }
 
     BoundFunction::BoundFunction(
         FunctionSymbol symbol,

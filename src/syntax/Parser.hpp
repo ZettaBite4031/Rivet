@@ -33,6 +33,8 @@ namespace Rivet {
         [[nodiscard]] std::unique_ptr<ReturnStatementSyntax> ParseReturnStatement();
         [[nodiscard]] std::unique_ptr<LocalDeclarationSyntax> ParseLocalDeclaration();
         [[nodiscard]] std::unique_ptr<AssignmentStatementSyntax> ParseAssignmentStatement();
+        [[nodiscard]] std::unique_ptr<IfStatementSyntax> ParseIfStatement();
+        [[nodiscard]] std::unique_ptr<WhileStatementSyntax> ParseWhileStatement();
 
         [[nodiscard]] std::unique_ptr<ExpressionSyntax> ParseExpression(int parent_precedence = 0);
         [[nodiscard]] std::unique_ptr<ExpressionSyntax> ParsePrimaryExpression();

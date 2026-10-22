@@ -1,0 +1,16 @@
+module demo;
+
+int main() {
+    mut int sum = 0;
+    mut int i = 0;
+    while (i < 5) {
+        if (i == 3) {
+            sum = sum + 10;
+        } else {
+            sum = sum + i;
+        }
+        i = i + 1;
+    }
+    if (sum >= 17) { return sum; }
+    else { return 0; }
+}

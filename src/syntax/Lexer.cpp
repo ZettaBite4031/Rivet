@@ -66,8 +66,14 @@ namespace Rivet {
         const std::string_view spelling = token.Text(m_Source);
         if (spelling == "module") token.Kind = TokenKind::ModuleKeyword;
         else if (spelling == "int") token.Kind = TokenKind::IntKeyword;
+        else if (spelling == "bool") token.Kind = TokenKind::BoolKeyword;
         else if (spelling == "mut") token.Kind = TokenKind::MutKeyword;
         else if (spelling == "return") token.Kind = TokenKind::ReturnKeyword;
+        else if (spelling == "if") token.Kind = TokenKind::IfKeyword;
+        else if (spelling == "else") token.Kind = TokenKind::ElseKeyword;
+        else if (spelling == "while") token.Kind = TokenKind::WhileKeyword;
+        else if (spelling == "true") token.Kind = TokenKind::TrueKeyword;
+        else if (spelling == "false") token.Kind = TokenKind::FalseKeyword;
         return token;
     }
 
@@ -95,7 +101,10 @@ namespace Rivet {
             case ';': kind = TokenKind::Semicolon;  break;
             case ',': kind = TokenKind::Comma;      break;
             case '.': kind = TokenKind::Dot;        break;
-            case '=': kind = TokenKind::Equals;     break;
+            case '=': kind = Peek(1) == '=' ? TokenKind::EqualsEquals : TokenKind::Equals; break;
+            case '!': kind = Peek(1) == '=' ? TokenKind::BangEquals : TokenKind::Bang; break;
+            case '<': kind = Peek(1) == '=' ? TokenKind::LessEquals : TokenKind::Less; break;
+            case '>': kind = Peek(1) == '=' ? TokenKind::GreaterEquals : TokenKind::Greater; break;
             case '+': kind = TokenKind::Plus;       break;
             case '-': kind = TokenKind::Minus;      break;
             case '*': kind = TokenKind::Star;       break;
@@ -115,6 +124,8 @@ namespace Rivet {
         }
 
         Advance();
+        if (kind == TokenKind::EqualsEquals || kind == TokenKind::BangEquals || 
+            kind == TokenKind::LessEquals || kind == TokenKind::GreaterEquals) Advance();
         return MakeToken(kind, beginning);
     }
 

@@ -127,7 +127,11 @@ namespace Rivet {
     }
 
     std::unique_ptr<StatementSyntax> Parser::ParseStatement() {
-        if (Current().Kind == TokenKind::IntKeyword || Current().Kind == TokenKind::MutKeyword)
+        if (Current().Kind == TokenKind::OpenBrace) return ParseBlockStatement();
+        if (Current().Kind == TokenKind::IfKeyword) return ParseIfStatement();
+        if (Current().Kind == TokenKind::WhileKeyword) return ParseWhileStatement();
+        if (Current().Kind == TokenKind::IntKeyword || Current().Kind == TokenKind::BoolKeyword
+            || Current().Kind == TokenKind::MutKeyword)
             return ParseLocalDeclaration();
         if (Current().Kind == TokenKind::Identifier && Peek(1).Kind == TokenKind::Equals)
             return ParseAssignmentStatement();
@@ -144,7 +148,8 @@ namespace Rivet {
     std::unique_ptr<LocalDeclarationSyntax> Parser::ParseLocalDeclaration() {
         Token mut{ TokenKind::MutKeyword, { Current().Span.Offset, 0 } };
         if (Current().Kind == TokenKind::MutKeyword) mut = ConsumeToken();
-        Token type = MatchToken(TokenKind::IntKeyword, "expected local type 'int'");
+        Token type = Current().Kind == TokenKind::BoolKeyword ? ConsumeToken()
+            : MatchToken(TokenKind::IntKeyword, "expected local type 'int' or 'bool'");
         Token name = MatchToken(TokenKind::Identifier, "expected local name");
         Token equals = MatchToken(TokenKind::Equals, "expected '=' after local name");
         auto initializer = ParseExpression();
@@ -159,6 +164,32 @@ namespace Rivet {
         auto value = ParseExpression();
         Token semicolon = MatchToken(TokenKind::Semicolon, "expected ';' after assignment");
         return std::make_unique<AssignmentStatementSyntax>(name, equals, std::move(value), semicolon);
+    }
+
+    std::unique_ptr<IfStatementSyntax> Parser::ParseIfStatement() {
+        Token keyword = ConsumeToken();
+        Token open = MatchToken(TokenKind::OpenParen, "expected '(' after 'if'");
+        auto condition = ParseExpression();
+        Token close = MatchToken(TokenKind::CloseParen, "expected ')' after condition");
+        auto then_block = ParseBlockStatement();
+        Token otherwise{ TokenKind::ElseKeyword, { Current().Span.Offset, 0 } };
+        std::unique_ptr<BlockStatementSyntax> else_block;
+        if (Current().Kind == TokenKind::ElseKeyword) {
+            otherwise = ConsumeToken();
+            else_block = ParseBlockStatement();
+        }
+        return std::make_unique<IfStatementSyntax>(keyword, open, std::move(condition), close,
+            std::move(then_block), otherwise, std::move(else_block));
+    }
+
+    std::unique_ptr<WhileStatementSyntax> Parser::ParseWhileStatement() {
+        Token keyword = ConsumeToken();
+        Token open = MatchToken(TokenKind::OpenParen, "expected '(' after 'while'");
+        auto condition = ParseExpression();
+        Token close = MatchToken(TokenKind::CloseParen, "expected ')' after condition");
+        auto body = ParseBlockStatement();
+        return std::make_unique<WhileStatementSyntax>(keyword, open,
+            std::move(condition), close, std::move(body));
     }
 
     std::unique_ptr<ExpressionSyntax> Parser::ParseExpression(int parent_precendence) {
@@ -203,7 +234,8 @@ namespace Rivet {
             return std::make_unique<ParenthesizedExpressionSyntax>(open_paren_token, std::move(expression), close_paren_token);
         }
 
-        if (Current().Kind == TokenKind::IntegerLiteral) 
+        if (Current().Kind == TokenKind::IntegerLiteral || Current().Kind == TokenKind::TrueKeyword
+            || Current().Kind == TokenKind::FalseKeyword)
             return std::make_unique<LiteralExpressionSyntax>(ConsumeToken());
         if (Current().Kind == TokenKind::Identifier && Peek(1).Kind == TokenKind::OpenParen)
             return ParseCallExpression();
@@ -258,7 +290,8 @@ namespace Rivet {
         switch (kind) {
         case TokenKind::Plus:
         case TokenKind::Minus:
-            return 3;
+        case TokenKind::Bang:
+            return 5;
 
         default:
             return 0;
@@ -269,10 +302,20 @@ namespace Rivet {
         switch (kind) {
         case TokenKind::Star:
         case TokenKind::Slash:
-            return 2;
+            return 4;
 
         case TokenKind::Plus:
         case TokenKind::Minus:
+            return 3;
+
+        case TokenKind::Less:
+        case TokenKind::LessEquals:
+        case TokenKind::Greater:
+        case TokenKind::GreaterEquals:
+            return 2;
+
+        case TokenKind::EqualsEquals:
+        case TokenKind::BangEquals:
             return 1;
 
         default:
@@ -286,6 +329,7 @@ namespace Rivet {
         case TokenKind::Minus: return "-";
         case TokenKind::Star:  return "*";
         case TokenKind::Slash: return "/";
+        case TokenKind::Bang:  return "!";
         default:               return "?";
         }
     }

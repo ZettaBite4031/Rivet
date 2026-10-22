@@ -175,6 +175,26 @@ namespace Rivet::Tests {
             REQUIRE(diagnostics.Empty());
         }
 
+        void ConsumesBothCharactersOfComparisonTokens() {
+            SourceFile source{ "comparison-tokens.rivet", "== != <= >= = ! < >" };
+            DiagnosticBag diagnostics;
+            const std::vector<Token> tokens = LexAll(source, diagnostics);
+
+            constexpr std::array expected{
+                ExpectedToken{ TokenKind::EqualsEquals, 0, 2, "==" },
+                ExpectedToken{ TokenKind::BangEquals, 3, 2, "!=" },
+                ExpectedToken{ TokenKind::LessEquals, 6, 2, "<=" },
+                ExpectedToken{ TokenKind::GreaterEquals, 9, 2, ">=" },
+                ExpectedToken{ TokenKind::Equals, 12, 1, "=" },
+                ExpectedToken{ TokenKind::Bang, 14, 1, "!" },
+                ExpectedToken{ TokenKind::Less, 16, 1, "<" },
+                ExpectedToken{ TokenKind::Greater, 18, 1, ">" },
+                ExpectedToken{ TokenKind::EndOfFile, 19, 0, "" },
+            };
+            RequireTokens(source, tokens, expected);
+            REQUIRE(diagnostics.Empty());
+        }
+
         void ReportsInvalidCharactersAndContinues() {
             SourceFile source{
                 "invalid-character.rivet",
@@ -265,6 +285,10 @@ namespace Rivet::Tests {
             TestCase{
                 "lexes all bootstrap punctuation",
                 LexesAllBootstrapPunctuation
+            },
+            TestCase{
+                "consumes both characters of comparison tokens",
+                ConsumesBothCharactersOfComparisonTokens
             },
             TestCase{
                 "reports invalid characters and continues",

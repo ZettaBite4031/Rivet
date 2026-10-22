@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -16,9 +17,26 @@ namespace {
     using Rivet::RirInstruction;
     using Rivet::RirOp;
 
-    bool UsesLeft(RirOp op) { return op != RirOp::Const && op != RirOp::Call; }
+    bool UsesLeft(RirOp op) {
+        return op == RirOp::Identity || op == RirOp::Negate || op == RirOp::Not ||
+            op == RirOp::Return || op == RirOp::Branch || op == RirOp::StoreLocal ||
+            op == RirOp::Add || op == RirOp::Subtract || op == RirOp::Multiply ||
+            op == RirOp::Divide || op == RirOp::Less || op == RirOp::LessEquals ||
+            op == RirOp::Greater || op == RirOp::GreaterEquals ||
+            op == RirOp::Equals || op == RirOp::NotEquals;
+    }
     bool UsesRight(RirOp op) {
-        return op == RirOp::Add || op == RirOp::Subtract || op == RirOp::Multiply || op == RirOp::Divide;
+        return op == RirOp::Add || op == RirOp::Subtract || op == RirOp::Multiply ||
+            op == RirOp::Divide || op == RirOp::Less || op == RirOp::LessEquals ||
+            op == RirOp::Greater || op == RirOp::GreaterEquals ||
+            op == RirOp::Equals || op == RirOp::NotEquals;
+    }
+    bool Defines(RirOp op) {
+        return op != RirOp::Return && op != RirOp::Branch && op != RirOp::Jump &&
+            op != RirOp::Label && op != RirOp::StoreLocal;
+    }
+    bool Terminates(RirOp op) {
+        return op == RirOp::Return || op == RirOp::Jump || op == RirOp::Branch;
     }
 
     std::string_view Trim(std::string_view text) {
@@ -32,6 +50,15 @@ namespace {
         if (!text.empty() && text.back() == ',') text.remove_suffix(1);
         if (text.empty() || text.front() != '$') return false;
         text.remove_prefix(1);
+        if (text.empty()) return false;
+        const auto parsed = std::from_chars(text.data(), text.data() + text.size(), result);
+        return parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size();
+    }
+
+    bool ParseIndex(std::string_view text, std::string_view prefix, std::size_t& result) {
+        if (!text.empty() && text.back() == ',') text.remove_suffix(1);
+        if (!text.starts_with(prefix)) return false;
+        text.remove_prefix(prefix.size());
         if (text.empty()) return false;
         const auto parsed = std::from_chars(text.data(), text.data() + text.size(), result);
         return parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size();
@@ -53,25 +80,53 @@ namespace Rivet {
         for (const RirFunction& function : module.Functions) {
             if (!names.insert(function.Name).second)
                 issues.push_back({ "ICE-RIR-004", "duplicate function '@" + function.Name + "'" });
-
-            std::unordered_set<std::size_t> defined;
-            for (std::size_t index = 0; index < function.ParameterCount; ++index)
-                defined.insert(index);
+            std::unordered_map<std::size_t, std::size_t> labels;
+            for (std::size_t i = 0; i < function.Instructions.size(); ++i) {
+                const auto& instruction = function.Instructions[i];
+                if (instruction.Op == RirOp::Label && !labels.emplace(instruction.Target, i).second)
+                    issues.push_back({ "ICE-RIR-008", "duplicate block label" });
+            }
+            std::unordered_map<std::size_t, RirValueType> defined;
+            std::unordered_set<std::size_t> all_definitions;
+            for (std::size_t i = 0; i < function.ParameterCount; ++i) {
+                defined.emplace(i, RirValueType::Int);
+                all_definitions.insert(i);
+            }
             bool terminated = false;
+            std::string block = "entry";
             for (const RirInstruction& instruction : function.Instructions) {
+                if (instruction.Op == RirOp::Label) {
+                    if (!terminated)
+                        issues.push_back({ "ICE-RIR-001", "function '@" + function.Name
+                            + "', block '" + block + "' has no terminator" });
+                    defined.clear();
+                    terminated = false;
+                    block = "block" + std::to_string(instruction.Target);
+                    continue;
+                }
                 if (terminated) {
                     issues.push_back({ "ICE-RIR-003", "instruction appears after terminator" });
                     break;
                 }
-                const auto require_value = [&](std::size_t index) {
-                    if (!defined.contains(index))
+                const auto require_value = [&](std::size_t id) -> std::optional<RirValueType> {
+                    const auto found = defined.find(id);
+                    if (found == defined.end()) {
                         issues.push_back({ "ICE-RIR-002", "instruction references undefined value '$"
-                            + std::to_string(index) + "'" });
+                            + std::to_string(id) + "'" });
+                        return std::nullopt;
+                    }
+                    return found->second;
                 };
-                if (UsesLeft(instruction.Op)) require_value(instruction.Left);
-                if (UsesRight(instruction.Op)) require_value(instruction.Right);
+                std::optional<RirValueType> left, right;
+                if (UsesLeft(instruction.Op)) left = require_value(instruction.Left);
+                if (UsesRight(instruction.Op)) right = require_value(instruction.Right);
+                const auto require_type = [&](std::optional<RirValueType> actual, RirValueType expected) {
+                    if (actual && *actual != expected)
+                        issues.push_back({ "ICE-RIR-010", "instruction operand has wrong type" });
+                };
                 if (instruction.Op == RirOp::Call) {
-                    for (std::size_t argument : instruction.Arguments) require_value(argument);
+                    for (std::size_t argument : instruction.Arguments)
+                        require_type(require_value(argument), RirValueType::Int);
                     const auto callee = signatures.find(instruction.Callee);
                     if (callee == signatures.end())
                         issues.push_back({ "ICE-RIR-006", "call references unknown function '@"
@@ -80,13 +135,53 @@ namespace Rivet {
                         issues.push_back({ "ICE-RIR-007", "call to '@" + instruction.Callee
                             + "' has wrong argument count" });
                 }
-                if (instruction.Op == RirOp::Return) terminated = true;
-                else if (!defined.insert(instruction.Result).second)
-                    issues.push_back({ "ICE-RIR-005", "value '$" + std::to_string(instruction.Result)
-                        + "' is defined twice" });
+                if (instruction.Op == RirOp::LoadLocal || instruction.Op == RirOp::StoreLocal) {
+                    if (instruction.Slot >= function.LocalTypes.size())
+                        issues.push_back({ "ICE-RIR-009", "invalid local slot" });
+                    else if (instruction.Op == RirOp::LoadLocal &&
+                        instruction.Type != function.LocalTypes[instruction.Slot])
+                        issues.push_back({ "ICE-RIR-010", "loaded local has wrong type" });
+                    else if (instruction.Op == RirOp::StoreLocal)
+                        require_type(left, function.LocalTypes[instruction.Slot]);
+                }
+                if (instruction.Op == RirOp::Return) require_type(left, RirValueType::Int);
+                if (instruction.Op == RirOp::Branch) require_type(left, RirValueType::Bool);
+                if (instruction.Op == RirOp::Not) require_type(left, RirValueType::Bool);
+                if (instruction.Op == RirOp::Identity || instruction.Op == RirOp::Negate)
+                    require_type(left, RirValueType::Int);
+                if (UsesRight(instruction.Op)) {
+                    const auto type = instruction.Op == RirOp::Equals || instruction.Op == RirOp::NotEquals
+                        ? left.value_or(RirValueType::Int) : RirValueType::Int;
+                    require_type(left, type);
+                    require_type(right, type);
+                }
+                if (instruction.Op == RirOp::Const && instruction.Type == RirValueType::Bool &&
+                    instruction.Immediate != 0 && instruction.Immediate != 1)
+                    issues.push_back({ "ICE-RIR-010", "invalid bool constant" });
+                const bool boolean_result = instruction.Op == RirOp::Not ||
+                    instruction.Op == RirOp::Less || instruction.Op == RirOp::LessEquals ||
+                    instruction.Op == RirOp::Greater || instruction.Op == RirOp::GreaterEquals ||
+                    instruction.Op == RirOp::Equals || instruction.Op == RirOp::NotEquals;
+                if (Defines(instruction.Op) && instruction.Op != RirOp::Const &&
+                    instruction.Op != RirOp::LoadLocal &&
+                    instruction.Type != (boolean_result ? RirValueType::Bool : RirValueType::Int))
+                    issues.push_back({ "ICE-RIR-010", "instruction result has wrong type" });
+                if (instruction.Op == RirOp::Jump || instruction.Op == RirOp::Branch) {
+                    if (!labels.contains(instruction.Target) ||
+                        (instruction.Op == RirOp::Branch && !labels.contains(instruction.FalseTarget)))
+                        issues.push_back({ "ICE-RIR-008", "branch references missing block" });
+                }
+                if (Defines(instruction.Op)) {
+                    if (!all_definitions.insert(instruction.Result).second)
+                        issues.push_back({ "ICE-RIR-005", "value '$" + std::to_string(instruction.Result)
+                            + "' is defined twice" });
+                    defined.emplace(instruction.Result, instruction.Type);
+                }
+                terminated = Terminates(instruction.Op);
             }
             if (!terminated)
-                issues.push_back({ "ICE-RIR-001", "function '@" + function.Name + "', block 'entry' has no terminator" });
+                issues.push_back({ "ICE-RIR-001", "function '@" + function.Name + "', block '"
+                    + block + "' has no terminator" });
         }
         return issues;
     }
@@ -144,23 +239,69 @@ namespace Rivet {
                 break;
             case State::Instruction: {
                 if (text_line == "}") { state = State::Function; break; }
+                if (text_line.starts_with("block") && text_line.ends_with(":")) {
+                    std::size_t id = 0;
+                    if (!ParseIndex(text_line.substr(0, text_line.size()-1), "block", id))
+                        return invalid("malformed block label");
+                    module.Functions.back().Instructions.push_back(RirInstruction{.Op=RirOp::Label,.Target=id});
+                    break;
+                }
                 std::istringstream parts{ std::string{ text_line } };
                 std::string first;
                 parts >> first;
                 RirInstruction instruction{ .Op = RirOp::Const };
+                if (first == "slot") {
+                    std::string type, id, extra;
+                    std::size_t slot = 0;
+                    if (!(parts >> type >> id) || (parts >> extra) ||
+                        !ParseIndex(id, "", slot) ||
+                        (type != "int" && type != "bool") ||
+                        slot != module.Functions.back().LocalTypes.size())
+                        return invalid("malformed local slot");
+                    module.Functions.back().LocalTypes.push_back(type == "bool" ?
+                        RirValueType::Bool : RirValueType::Int);
+                    break;
+                }
                 if (first == "return") {
                     std::string source, extra;
                     if (!(parts >> source) || (parts >> extra) || !ParseRegister(source, instruction.Left))
                         return invalid("malformed return");
                     instruction.Op = RirOp::Return;
+                } else if (first == "jump") {
+                    std::string target, extra;
+                    if (!(parts >> target) || (parts >> extra) ||
+                        !ParseIndex(target, "block", instruction.Target)) return invalid("malformed jump");
+                    instruction.Op = RirOp::Jump;
+                } else if (first == "branch") {
+                    std::string value, yes, no, extra;
+                    if (!(parts >> value >> yes >> no) || (parts >> extra) ||
+                        !ParseRegister(value, instruction.Left) ||
+                        !ParseIndex(yes, "block", instruction.Target) ||
+                        !ParseIndex(no, "block", instruction.FalseTarget)) return invalid("malformed branch");
+                    instruction.Op = RirOp::Branch;
+                } else if (first == "store") {
+                    std::string slot, source, extra;
+                    if (!(parts >> slot >> source) || (parts >> extra) ||
+                        !ParseIndex(slot, "slot", instruction.Slot) ||
+                        !ParseRegister(source, instruction.Left)) return invalid("malformed store");
+                    instruction.Op = RirOp::StoreLocal;
                 } else {
                     std::string destination, equals, operation, first_operand, second_operand, extra;
-                    if (first != "int" || !(parts >> destination >> equals >> operation >> first_operand)
+                    if ((first != "int" && first != "bool") || !(parts >> destination >> equals >> operation >> first_operand)
                         || equals != "=" || !ParseRegister(destination, instruction.Result))
                         return invalid("malformed instruction");
-                    if (operation == "const") {
+                    instruction.Type = first == "bool" ? RirValueType::Bool : RirValueType::Int;
+                    if (operation == "load") {
+                        instruction.Op = RirOp::LoadLocal;
+                        if (!ParseIndex(first_operand, "slot", instruction.Slot))
+                            return invalid("invalid load slot");
+                    } else if (operation == "const") {
                         instruction.Op = RirOp::Const;
-                        if (!ParseI32(first_operand, instruction.Immediate)) return invalid("invalid int constant");
+                        if (instruction.Type == RirValueType::Bool &&
+                            (first_operand == "true" || first_operand == "false"))
+                            instruction.Immediate = first_operand == "true" ? 1 : 0;
+                        else if (!ParseI32(first_operand, instruction.Immediate))
+                            return invalid("invalid constant");
                     } else if (operation == "call") {
                         instruction.Op = RirOp::Call;
                         std::string rest;
@@ -190,6 +331,7 @@ namespace Rivet {
                         if (!ParseRegister(first_operand, instruction.Left)) return invalid("invalid first operand");
                         if (operation == "identity") instruction.Op = RirOp::Identity;
                         else if (operation == "negate") instruction.Op = RirOp::Negate;
+                        else if (operation == "not") instruction.Op = RirOp::Not;
                         else {
                             if (!(parts >> second_operand) || !ParseRegister(second_operand, instruction.Right))
                                 return invalid("invalid second operand");
@@ -197,6 +339,12 @@ namespace Rivet {
                             else if (operation == "subtract") instruction.Op = RirOp::Subtract;
                             else if (operation == "multiply") instruction.Op = RirOp::Multiply;
                             else if (operation == "divide") instruction.Op = RirOp::Divide;
+                            else if (operation == "less") instruction.Op = RirOp::Less;
+                            else if (operation == "less_equals") instruction.Op = RirOp::LessEquals;
+                            else if (operation == "greater") instruction.Op = RirOp::Greater;
+                            else if (operation == "greater_equals") instruction.Op = RirOp::GreaterEquals;
+                            else if (operation == "equals") instruction.Op = RirOp::Equals;
+                            else if (operation == "not_equals") instruction.Op = RirOp::NotEquals;
                             else return invalid("unknown instruction");
                         }
                     }

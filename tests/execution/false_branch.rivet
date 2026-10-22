@@ -1,0 +1,10 @@
+module demo;
+
+int main() {
+    mut bool enabled = false;
+    mut int result = 40;
+    while (enabled) { result = 0; }
+    enabled = !enabled;
+    if (enabled == true) { return result + 2; }
+    else { return 0; }
+}

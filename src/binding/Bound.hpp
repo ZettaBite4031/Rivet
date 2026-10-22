@@ -14,6 +14,7 @@ namespace Rivet {
     enum class TypeKind : std::uint8_t {
         Error,
         Int,
+        Bool,
     };
 
     struct TypeSymbol final {
@@ -24,6 +25,7 @@ namespace Rivet {
     namespace BuiltinTypes {
         inline constexpr TypeSymbol Error{ TypeKind::Error, "<error>" };
         inline constexpr TypeSymbol Int{ TypeKind::Int, "int" };
+        inline constexpr TypeSymbol Bool{ TypeKind::Bool, "bool" };
     }
 
     struct FunctionSymbol final {
@@ -47,6 +49,8 @@ namespace Rivet {
         ReturnStatement,
         LocalDeclaration,
         AssignmentStatement,
+        IfStatement,
+        WhileStatement,
         ErrorStatement,
         LiteralExpression,
         LocalExpression,
@@ -59,6 +63,7 @@ namespace Rivet {
     enum class BoundUnaryOperatorKind : std::uint8_t {
         Identity,
         Negation,
+        Not,
     };
 
     enum class BoundBinaryOperatorKind : std::uint8_t {
@@ -66,6 +71,12 @@ namespace Rivet {
         Subtraction,
         Multiplication,
         Division,
+        Less,
+        LessEquals,
+        Greater,
+        GreaterEquals,
+        Equals,
+        NotEquals,
     };
 
     [[nodiscard]] std::string_view BoundNodeKindName(BoundNodeKind kind) noexcept;
@@ -84,6 +95,7 @@ namespace Rivet {
     };
 
     class BoundStatement : public BoundNode {};
+    class BoundBlockStatement;
 
     class BoundExpression : public BoundNode {
     public:
@@ -92,7 +104,8 @@ namespace Rivet {
 
     class BoundLiteralExpression final : public BoundExpression {
     public:
-        BoundLiteralExpression(std::int32_t value, SourceSpan span) noexcept;
+        BoundLiteralExpression(std::int32_t value, SourceSpan span,
+            const TypeSymbol* type = &BuiltinTypes::Int) noexcept;
 
         [[nodiscard]] BoundNodeKind Kind() const noexcept override;
         [[nodiscard]] SourceSpan Span() const noexcept override;
@@ -100,16 +113,18 @@ namespace Rivet {
 
         std::int32_t Value;
         SourceSpan LiteralSpan;
+        const TypeSymbol* LiteralType;
     };
 
     class BoundLocalExpression final : public BoundExpression {
     public:
-        BoundLocalExpression(std::size_t local, SourceSpan span) noexcept;
+        BoundLocalExpression(std::size_t local, SourceSpan span, const TypeSymbol* type) noexcept;
         [[nodiscard]] BoundNodeKind Kind() const noexcept override;
         [[nodiscard]] SourceSpan Span() const noexcept override;
         [[nodiscard]] const TypeSymbol& Type() const noexcept override;
         std::size_t Local;
         SourceSpan NameSpan;
+        const TypeSymbol* LocalType;
     };
 
     class BoundCallExpression final : public BoundExpression {
@@ -208,6 +223,30 @@ namespace Rivet {
         [[nodiscard]] SourceSpan Span() const noexcept override;
         std::size_t Local;
         std::unique_ptr<BoundExpression> Value;
+        SourceSpan StatementSpan;
+    };
+
+    class BoundIfStatement final : public BoundStatement {
+    public:
+        BoundIfStatement(std::unique_ptr<BoundExpression> condition,
+            std::unique_ptr<BoundBlockStatement> then_block,
+            std::unique_ptr<BoundBlockStatement> else_block, SourceSpan span) noexcept;
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        std::unique_ptr<BoundExpression> Condition;
+        std::unique_ptr<BoundBlockStatement> Then;
+        std::unique_ptr<BoundBlockStatement> Else;
+        SourceSpan StatementSpan;
+    };
+
+    class BoundWhileStatement final : public BoundStatement {
+    public:
+        BoundWhileStatement(std::unique_ptr<BoundExpression> condition,
+            std::unique_ptr<BoundBlockStatement> body, SourceSpan span) noexcept;
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        std::unique_ptr<BoundExpression> Condition;
+        std::unique_ptr<BoundBlockStatement> Body;
         SourceSpan StatementSpan;
     };
 

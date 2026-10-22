@@ -13,11 +13,17 @@ namespace Rivet {
 
         Identifier,
         IntegerLiteral,
+        TrueKeyword,
+        FalseKeyword,
 
         ModuleKeyword,
         IntKeyword,
+        BoolKeyword,
         MutKeyword,
         ReturnKeyword,
+        IfKeyword,
+        ElseKeyword,
+        WhileKeyword,
 
         OpenParen,
         CloseParen,
@@ -27,6 +33,13 @@ namespace Rivet {
         Comma,
         Dot,
         Equals,
+        EqualsEquals,
+        Bang,
+        BangEquals,
+        Less,
+        LessEquals,
+        Greater,
+        GreaterEquals,
 
         Plus,
         Minus,

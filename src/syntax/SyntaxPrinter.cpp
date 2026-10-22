@@ -132,6 +132,30 @@ namespace {
                 break;
             }
 
+            case SyntaxKind::IfStatement: {
+                const auto& branch = static_cast<const IfStatementSyntax&>(node);
+                WriteTokenLine(output, source, branch.Keyword, depth + 1);
+                WriteTokenLine(output, source, branch.OpenParenToken, depth + 1);
+                WriteNode(output, source, *branch.Condition, depth + 1);
+                WriteTokenLine(output, source, branch.CloseParenToken, depth + 1);
+                WriteNode(output, source, *branch.Then, depth + 1);
+                if (branch.Else) {
+                    WriteTokenLine(output, source, branch.ElseKeyword, depth + 1);
+                    WriteNode(output, source, *branch.Else, depth + 1);
+                }
+                break;
+            }
+
+            case SyntaxKind::WhileStatement: {
+                const auto& loop = static_cast<const WhileStatementSyntax&>(node);
+                WriteTokenLine(output, source, loop.Keyword, depth + 1);
+                WriteTokenLine(output, source, loop.OpenParenToken, depth + 1);
+                WriteNode(output, source, *loop.Condition, depth + 1);
+                WriteTokenLine(output, source, loop.CloseParenToken, depth + 1);
+                WriteNode(output, source, *loop.Body, depth + 1);
+                break;
+            }
+
             case SyntaxKind::LiteralExpression: {
                 const auto& expression = static_cast<const LiteralExpressionSyntax&>(node);
                 WriteTokenLine(output, source, expression.LiteralToken, depth + 1);

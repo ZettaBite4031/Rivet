@@ -1,0 +1,4 @@
+module demo;
+int main() {
+    if (true) { return 1; }
+}

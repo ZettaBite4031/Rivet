@@ -10,12 +10,15 @@
 #include <vector>
 
 namespace Rivet {
+    enum class RirValueType : std::uint8_t { Int, Bool };
     enum class RirOp : std::uint8_t {
         Const, Identity, Negate, Add, Subtract, Multiply, Divide, Call, Return,
+        Not, Less, LessEquals, Greater, GreaterEquals, Equals, NotEquals,
+        LoadLocal, StoreLocal, Label, Jump, Branch,
     };
 
-    // The lowerer emits dense virtual registers. The verifier also accepts
-    // sparse names, but requires every use to refer to a prior definition.
+    // Registers hold expression values within a block. Local slots carry
+    // mutable state across branch and loop edges.
     struct RirInstruction {
         RirOp Op;
         std::size_t Result{ 0 };
@@ -25,12 +28,17 @@ namespace Rivet {
         SourceSpan Span{};
         std::string Callee{};
         std::vector<std::size_t> Arguments{};
+        RirValueType Type{ RirValueType::Int };
+        std::size_t Slot{ 0 };
+        std::size_t Target{ 0 };
+        std::size_t FalseTarget{ 0 };
     };
 
     struct RirFunction {
         std::string Name;
-        std::vector<RirInstruction> Instructions{};
         std::size_t ParameterCount{ 0 };
+        std::vector<RirInstruction> Instructions{};
+        std::vector<RirValueType> LocalTypes{};
     };
 
     struct RirModule {

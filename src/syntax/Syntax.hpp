@@ -19,6 +19,8 @@ namespace Rivet {
         ReturnStatement,
         LocalDeclaration,
         AssignmentStatement,
+        IfStatement,
+        WhileStatement,
         LiteralExpression,
         NameExpression,
         CallExpression,
@@ -41,6 +43,7 @@ namespace Rivet {
 
     class StatementSyntax : public SyntaxNode {};
     class ExpressionSyntax : public SyntaxNode {};
+    class BlockStatementSyntax;
 
     class ModuleDeclarationSyntax final : public SyntaxNode {
     public:
@@ -167,6 +170,36 @@ namespace Rivet {
         Token EqualsToken;
         std::unique_ptr<ExpressionSyntax> Value;
         Token SemicolonToken;
+    };
+
+    class IfStatementSyntax final : public StatementSyntax {
+    public:
+        IfStatementSyntax(Token keyword, Token open_paren, std::unique_ptr<ExpressionSyntax> condition,
+            Token close_paren, std::unique_ptr<BlockStatementSyntax> then_block,
+            Token else_keyword, std::unique_ptr<BlockStatementSyntax> else_block) noexcept;
+        [[nodiscard]] SyntaxKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        Token Keyword;
+        Token OpenParenToken;
+        std::unique_ptr<ExpressionSyntax> Condition;
+        Token CloseParenToken;
+        std::unique_ptr<BlockStatementSyntax> Then;
+        Token ElseKeyword;
+        std::unique_ptr<BlockStatementSyntax> Else;
+    };
+
+    class WhileStatementSyntax final : public StatementSyntax {
+    public:
+        WhileStatementSyntax(Token keyword, Token open_paren,
+            std::unique_ptr<ExpressionSyntax> condition, Token close_paren,
+            std::unique_ptr<BlockStatementSyntax> body) noexcept;
+        [[nodiscard]] SyntaxKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        Token Keyword;
+        Token OpenParenToken;
+        std::unique_ptr<ExpressionSyntax> Condition;
+        Token CloseParenToken;
+        std::unique_ptr<BlockStatementSyntax> Body;
     };
 
     class BlockStatementSyntax final : public StatementSyntax {

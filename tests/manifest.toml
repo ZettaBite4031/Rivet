@@ -182,3 +182,28 @@ mode = "run"
 input = "execution/calls.rivet"
 expect = "execution/calls.run"
 
+[[case]]
+name = "execution_control_flow"
+mode = "run"
+input = "execution/control_flow.rivet"
+expect = "execution/control_flow.run"
+
+[[case]]
+name = "execution_false_branch"
+mode = "run"
+input = "execution/false_branch.rivet"
+expect = "execution/false_branch.run"
+
+[[case]]
+name = "binding_invalid_condition"
+mode = "check"
+input = "diagnostics/invalid_condition.rivet"
+diagnostics = "diagnostics/invalid_condition.diag"
+exit = "compile_error"
+
+[[case]]
+name = "binding_incomplete_return"
+mode = "check"
+input = "diagnostics/incomplete_return.rivet"
+diagnostics = "diagnostics/incomplete_return.diag"
+exit = "compile_error"

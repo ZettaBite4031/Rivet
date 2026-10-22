@@ -34,6 +34,9 @@ namespace Rivet {
         UnknownFunction = 208,
         ArgumentCountMismatch = 209,
         InvalidEntryPoint = 210,
+        TypeMismatch = 211,
+        InvalidOperator = 212,
+        InvalidCondition = 213,
     };
 
     struct Diagnostic {

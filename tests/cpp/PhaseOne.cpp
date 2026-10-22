@@ -259,6 +259,86 @@ namespace Rivet::Tests {
         }
     }
 
+    namespace {
+        void ExecutesConditionalLoopAndScope() {
+            Compiled result = Bind("module demo; int main() { mut int sum = 0; mut int i = 0; "
+                "while (i < 5) { if (i == 3) { sum = sum + 10; } "
+                "else { sum = sum + i; } i = i + 1; } "
+                "if (sum >= 17) { return sum; } else { return 0; } }");
+            REQUIRE(result.Diagnostics.Empty());
+            const RirModule rir = LowerToRir(*result.Bound);
+            REQUIRE(VerifyRir(rir).empty());
+            REQUIRE_EQ(*RunRirMain(rir), std::int32_t{ 17 });
+            std::ostringstream printed;
+            WriteRir(printed, rir);
+            RirModule round_trip;
+            REQUIRE(ParseRirText(printed.str(), round_trip).empty());
+            REQUIRE(VerifyRir(round_trip).empty());
+            REQUIRE_EQ(*RunRirMain(round_trip), std::int32_t{ 17 });
+
+            Compiled false_loop = Bind("module demo; int main() { mut int x = 42; "
+                "while (false) { x = 0; } if (!false) { return x; } else { return 0; } }");
+            REQUIRE(false_loop.Diagnostics.Empty());
+            REQUIRE_EQ(*RunRirMain(LowerToRir(*false_loop.Bound)), std::int32_t{ 42 });
+        }
+        void ChecksConditionsReturnsAndScopes() {
+            const auto has = [](std::string source, DiagnosticCode code) {
+                Compiled result = Bind(std::move(source));
+                for (const auto& item : result.Diagnostics.Items())
+                    if (item.Code == code && item.Severity == DiagnosticSeverity::Error) return true;
+                return false;
+            };
+            REQUIRE(has("module demo; int main() { if (1) { return 1; } return 0; }",
+                DiagnosticCode::InvalidCondition));
+            REQUIRE(has("module demo; int main() { while (true) { return 1; } }",
+                DiagnosticCode::MissingReturn));
+            REQUIRE(has("module demo; int main() { if (true) { return 1; } }",
+                DiagnosticCode::MissingReturn));
+            REQUIRE(has("module demo; int main() { return true; }",
+                DiagnosticCode::TypeMismatch));
+            REQUIRE(has("module demo; int main() { int x = false; return 1; }",
+                DiagnosticCode::TypeMismatch));
+            REQUIRE(has("module demo; int main() { return true + 1; }",
+                DiagnosticCode::InvalidOperator));
+            REQUIRE(has("module demo; int main() { { int x = 1; } return x; }",
+                DiagnosticCode::UnknownLocal));
+            Compiled shadow = Bind("module demo; int main() { int x = 10; "
+                "if (x == 10) { int x = 32; return x + 10; } else { return x; } }");
+            REQUIRE(shadow.Diagnostics.Empty());
+            REQUIRE_EQ(*RunRirMain(LowerToRir(*shadow.Bound)), std::int32_t{ 42 });
+        }
+        void RejectsMalformedControlFlowRir() {
+            RirModule invalid{ .Name = "demo" };
+            invalid.Functions.push_back(RirFunction{ .Name = "main" });
+            auto& instructions = invalid.Functions.front().Instructions;
+            instructions.push_back(RirInstruction{ .Op = RirOp::Const, .Result = 0,
+                .Immediate = 1, .Type = RirValueType::Bool });
+            instructions.push_back(RirInstruction{ .Op = RirOp::Branch, .Left = 0,
+                .Target = 1, .FalseTarget = 2 });
+            instructions.push_back(RirInstruction{ .Op = RirOp::Label, .Target = 1 });
+            instructions.push_back(RirInstruction{ .Op = RirOp::Return, .Left = 0 });
+            const auto issues = VerifyRir(invalid);
+            bool missing_label = false, undefined_value = false;
+            for (const auto& issue : issues) {
+                missing_label |= issue.Code == "ICE-RIR-008";
+                undefined_value |= issue.Code == "ICE-RIR-002";
+            }
+            REQUIRE(missing_label);
+            REQUIRE(undefined_value);
+        }
+        void CoversComparisonOperatorsAndPrecedence() {
+            Compiled result = Bind("module demo; int main() { "
+                "if (1 + 1 == 2 * 1) { "
+                "if (1 <= 2) { if (3 > 2) { if (3 != 2) { "
+                "if (3 >= 3) { if (1 < 2) { return 42; } } } } } } "
+                "return 0; }");
+            REQUIRE(result.Diagnostics.Empty());
+            const auto rir = LowerToRir(*result.Bound);
+            REQUIRE(VerifyRir(rir).empty());
+            REQUIRE_EQ(*RunRirMain(rir), std::int32_t{ 42 });
+        }
+    }
+
     bool RunPhaseOneTests() {
         const std::array tests{
             TestCase{ "parses an explicit module path", ParsesModulePath },
@@ -275,6 +355,10 @@ namespace Rivet::Tests {
             TestCase{ "calls forward functions with parameters", CallsForwardFunctionsWithParameters },
             TestCase{ "rejects invalid calls and parameters", RejectsInvalidCallsAndParameters },
             TestCase{ "verifies calls and bounds recursion", VerifiesCallTargetsAndStopsUnboundedRecursion },
+            TestCase{ "executes conditional loops and round-trips RIR", ExecutesConditionalLoopAndScope },
+            TestCase{ "checks conditions, returns, and scopes", ChecksConditionsReturnsAndScopes },
+            TestCase{ "rejects malformed control-flow RIR", RejectsMalformedControlFlowRir },
+            TestCase{ "covers comparison operators and precedence", CoversComparisonOperatorsAndPrecedence },
         };
         return RunSuite("Phase one", tests);
     }

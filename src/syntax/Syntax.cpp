@@ -15,12 +15,14 @@ namespace Rivet {
     std::string_view SyntaxKindName(SyntaxKind kind) noexcept {
         switch (kind) {
         case SyntaxKind::CompilationUnit:         return "CompilationUnit";
-        case SyntaxKind::ModuleDeclaration:        return "ModuleDeclaration";
+        case SyntaxKind::ModuleDeclaration:       return "ModuleDeclaration";
         case SyntaxKind::FunctionDefinition:      return "FunctionDefinition";
         case SyntaxKind::BlockStatement:          return "BlockStatement";
         case SyntaxKind::ReturnStatement:         return "ReturnStatement";
         case SyntaxKind::LocalDeclaration:        return "LocalDeclaration";
         case SyntaxKind::AssignmentStatement:     return "AssignmentStatement";
+        case SyntaxKind::IfStatement:             return "IfStatement";
+        case SyntaxKind::WhileStatement:          return "WhileStatement";
         case SyntaxKind::LiteralExpression:       return "LiteralExpression";
         case SyntaxKind::NameExpression:          return "NameExpression";
         case SyntaxKind::CallExpression:          return "CallExpression";
@@ -148,6 +150,30 @@ namespace Rivet {
     SyntaxKind AssignmentStatementSyntax::Kind() const noexcept { return SyntaxKind::AssignmentStatement; }
     SourceSpan AssignmentStatementSyntax::Span() const noexcept {
         return CoveringSpan(NameToken.Span, SemicolonToken.Span);
+    }
+
+    IfStatementSyntax::IfStatementSyntax(Token keyword, Token open_paren,
+        std::unique_ptr<ExpressionSyntax> condition, Token close_paren,
+        std::unique_ptr<BlockStatementSyntax> then_block, Token else_keyword,
+        std::unique_ptr<BlockStatementSyntax> else_block) noexcept
+        : Keyword(keyword), OpenParenToken(open_paren), Condition(std::move(condition)),
+          CloseParenToken(close_paren), Then(std::move(then_block)), ElseKeyword(else_keyword),
+          Else(std::move(else_block)) { assert(Condition && Then); }
+
+    SyntaxKind IfStatementSyntax::Kind() const noexcept { return SyntaxKind::IfStatement; }
+    SourceSpan IfStatementSyntax::Span() const noexcept {
+        return CoveringSpan(Keyword.Span, Else ? Else->Span() : Then->Span());
+    }
+
+    WhileStatementSyntax::WhileStatementSyntax(Token keyword, Token open_paren,
+        std::unique_ptr<ExpressionSyntax> condition, Token close_paren,
+        std::unique_ptr<BlockStatementSyntax> body) noexcept
+        : Keyword(keyword), OpenParenToken(open_paren), Condition(std::move(condition)),
+          CloseParenToken(close_paren), Body(std::move(body)) { assert(Condition && Body); }
+
+    SyntaxKind WhileStatementSyntax::Kind() const noexcept { return SyntaxKind::WhileStatement; }
+    SourceSpan WhileStatementSyntax::Span() const noexcept {
+        return CoveringSpan(Keyword.Span, Body->Span());
     }
 
     BlockStatementSyntax::BlockStatementSyntax(Token open_brace_token, std::vector<std::unique_ptr<StatementSyntax>> statements, Token close_brace_token) noexcept

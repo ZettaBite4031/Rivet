@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <optional>
 #include <vector>
 
 namespace Rivet {
@@ -40,8 +41,10 @@ namespace Rivet {
 
         [[nodiscard]]
         std::unique_ptr<BoundBlockStatement> BindBlockStatement(
-            const BlockStatementSyntax& syntax
+            const BlockStatementSyntax& syntax, bool new_scope = true
         );
+        [[nodiscard]] std::optional<std::size_t> LookupLocal(const std::string& name) const;
+        [[nodiscard]] static bool AlwaysReturns(const BoundStatement& statement);
 
         [[nodiscard]]
         std::unique_ptr<BoundStatement> BindStatement(
@@ -60,6 +63,8 @@ namespace Rivet {
         [[nodiscard]] std::unique_ptr<BoundStatement> BindAssignment(
             const AssignmentStatementSyntax& syntax
         );
+        [[nodiscard]] std::unique_ptr<BoundStatement> BindIf(const IfStatementSyntax& syntax);
+        [[nodiscard]] std::unique_ptr<BoundStatement> BindWhile(const WhileStatementSyntax& syntax);
 
         [[nodiscard]]
         std::unique_ptr<BoundExpression> BindExpression(
@@ -81,7 +86,9 @@ namespace Rivet {
             const BinaryExpressionSyntax& syntax
         );
 
-        [[nodiscard]] std::unique_ptr<BoundExpression> BindCallExpression(const CallExpressionSyntax& syntax);
+        [[nodiscard]] std::unique_ptr<BoundExpression> BindCallExpression(
+            const CallExpressionSyntax& syntax
+        );
 
         const SourceFile& m_Source;
         DiagnosticBag& m_Diagnostics;
@@ -89,7 +96,7 @@ namespace Rivet {
         std::vector<DeclaredFunction> m_Declarations;
         std::unordered_map<std::string, std::size_t> m_FunctionIndices;
         std::vector<LocalSymbol> m_Locals;
-        std::unordered_map<std::string, std::size_t> m_LocalIndices;
+        std::vector<std::unordered_map<std::string, std::size_t>> m_Scopes;
         bool m_HasStructurallyInvalidDeclaration{ false };
     };
 }

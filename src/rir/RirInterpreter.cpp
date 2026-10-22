@@ -28,12 +28,36 @@ namespace {
         for (std::size_t index = 0; index < arguments.size(); ++index)
             registers.emplace(index, arguments[index]);
 
-        for (const RirInstruction& instruction : function.Instructions) {
+        std::vector<std::int32_t> slots(function.LocalTypes.size());
+        std::unordered_map<std::size_t, std::size_t> labels;
+        for (std::size_t i = 0; i < function.Instructions.size(); ++i)
+            if (function.Instructions[i].Op == RirOp::Label)
+                labels.emplace(function.Instructions[i].Target, i);
+        std::size_t pc = 0;
+        while (pc < function.Instructions.size()) {
+            const RirInstruction& instruction = function.Instructions[pc++];
             if (instruction.Op == RirOp::Return) return registers.at(instruction.Left);
+            if (instruction.Op == RirOp::Label) continue;
+            if (instruction.Op == RirOp::Jump) { pc = labels.at(instruction.Target); continue; }
+            if (instruction.Op == RirOp::Branch) {
+                pc = labels.at(registers.at(instruction.Left) ? instruction.Target : instruction.FalseTarget);
+                continue;
+            }
+            if (instruction.Op == RirOp::StoreLocal) {
+                slots.at(instruction.Slot) = registers.at(instruction.Left); continue;
+            }
 
             std::int64_t result = 0;
             switch (instruction.Op) {
             case RirOp::Const: result = instruction.Immediate; break;
+            case RirOp::LoadLocal: result = slots.at(instruction.Slot); break;
+            case RirOp::Not: result = !registers.at(instruction.Left); break;
+            case RirOp::Less: result = registers.at(instruction.Left) < registers.at(instruction.Right); break;
+            case RirOp::LessEquals: result = registers.at(instruction.Left) <= registers.at(instruction.Right); break;
+            case RirOp::Greater: result = registers.at(instruction.Left) > registers.at(instruction.Right); break;
+            case RirOp::GreaterEquals: result = registers.at(instruction.Left) >= registers.at(instruction.Right); break;
+            case RirOp::Equals: result = registers.at(instruction.Left) == registers.at(instruction.Right); break;
+            case RirOp::NotEquals: result = registers.at(instruction.Left) != registers.at(instruction.Right); break;
             case RirOp::Identity: result = registers.at(instruction.Left); break;
             case RirOp::Negate: result = -static_cast<std::int64_t>(registers.at(instruction.Left)); break;
             case RirOp::Add: result = static_cast<std::int64_t>(registers.at(instruction.Left))
@@ -61,13 +85,14 @@ namespace {
                 result = *value;
                 break;
             }
-            case RirOp::Return: assert(false); break;
+            case RirOp::Return: case RirOp::Label: case RirOp::Jump:
+            case RirOp::Branch: case RirOp::StoreLocal: assert(false); break;
             }
             if (result < std::numeric_limits<std::int32_t>::min()
                 || result > std::numeric_limits<std::int32_t>::max())
                 return std::unexpected(RuntimeFault{ "R0002", instruction.Span,
                     "integer arithmetic overflow" });
-            registers.emplace(instruction.Result, static_cast<std::int32_t>(result));
+            registers.insert_or_assign(instruction.Result, static_cast<std::int32_t>(result));
         }
         assert(false && "verifier permitted a function without a return");
         return std::unexpected(RuntimeFault{ "R0003", {}, "function has no return" });

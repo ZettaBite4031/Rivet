@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <ostream>
+#include <string>
 #include <vector>
 
 namespace {
@@ -24,14 +25,16 @@ namespace {
             case BoundNodeKind::LiteralExpression: {
                 const auto& literal =
                     static_cast<const BoundLiteralExpression&>(expression);
-                output << "Literal " << literal.Value
+                output << "Literal " << (literal.Type().Kind == TypeKind::Bool
+                    ? (literal.Value ? "true" : "false") : std::to_string(literal.Value))
                     << " : " << literal.Type().Name << '\n';
                 break;
             }
 
             case BoundNodeKind::LocalExpression: {
                 const auto& local = static_cast<const BoundLocalExpression&>(expression);
-                output << "Local " << locals.at(local.Local).Name << " : int\n";
+                output << "Local " << locals.at(local.Local).Name << " : "
+                    << local.Type().Name << "\n";
                 break;
             }
 
@@ -122,6 +125,22 @@ namespace {
                     depth + 1,
                     locals
                 );
+                break;
+            }
+
+            case BoundNodeKind::IfStatement: {
+                const auto& branch = static_cast<const BoundIfStatement&>(statement);
+                output << "If\n";
+                WriteExpression(output, *branch.Condition, depth + 1, locals);
+                WriteStatement(output, *branch.Then, depth + 1, locals);
+                if (branch.Else) WriteStatement(output, *branch.Else, depth + 1, locals);
+                break;
+            }
+            case BoundNodeKind::WhileStatement: {
+                const auto& loop = static_cast<const BoundWhileStatement&>(statement);
+                output << "While\n";
+                WriteExpression(output, *loop.Condition, depth + 1, locals);
+                WriteStatement(output, *loop.Body, depth + 1, locals);
                 break;
             }
 
