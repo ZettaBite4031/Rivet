@@ -106,9 +106,35 @@ namespace {
                 break;
             }
 
+            case SyntaxKind::LocalDeclaration: {
+                const auto& local = static_cast<const LocalDeclarationSyntax&>(node);
+                if (!local.MutKeyword.Span.Empty()) WriteTokenLine(output, source, local.MutKeyword, depth + 1);
+                WriteTokenLine(output, source, local.TypeToken, depth + 1);
+                WriteTokenLine(output, source, local.NameToken, depth + 1);
+                WriteTokenLine(output, source, local.EqualsToken, depth + 1);
+                WriteNode(output, source, *local.Initializer, depth + 1);
+                WriteTokenLine(output, source, local.SemicolonToken, depth + 1);
+                break;
+            }
+
+            case SyntaxKind::AssignmentStatement: {
+                const auto& assignment = static_cast<const AssignmentStatementSyntax&>(node);
+                WriteTokenLine(output, source, assignment.NameToken, depth + 1);
+                WriteTokenLine(output, source, assignment.EqualsToken, depth + 1);
+                WriteNode(output, source, *assignment.Value, depth + 1);
+                WriteTokenLine(output, source, assignment.SemicolonToken, depth + 1);
+                break;
+            }
+
             case SyntaxKind::LiteralExpression: {
                 const auto& expression = static_cast<const LiteralExpressionSyntax&>(node);
                 WriteTokenLine(output, source, expression.LiteralToken, depth + 1);
+                break;
+            }
+
+            case SyntaxKind::NameExpression: {
+                const auto& expression = static_cast<const NameExpressionSyntax&>(node);
+                WriteTokenLine(output, source, expression.NameToken, depth + 1);
                 break;
             }
 

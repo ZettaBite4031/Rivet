@@ -66,6 +66,7 @@ namespace Rivet {
         const std::string_view spelling = token.Text(m_Source);
         if (spelling == "module") token.Kind = TokenKind::ModuleKeyword;
         else if (spelling == "int") token.Kind = TokenKind::IntKeyword;
+        else if (spelling == "mut") token.Kind = TokenKind::MutKeyword;
         else if (spelling == "return") token.Kind = TokenKind::ReturnKeyword;
         return token;
     }
@@ -93,6 +94,7 @@ namespace Rivet {
             case '}': kind = TokenKind::CloseBrace; break;
             case ';': kind = TokenKind::Semicolon;  break;
             case '.': kind = TokenKind::Dot;        break;
+            case '=': kind = TokenKind::Equals;     break;
             case '+': kind = TokenKind::Plus;       break;
             case '-': kind = TokenKind::Minus;      break;
             case '*': kind = TokenKind::Star;       break;

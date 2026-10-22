@@ -116,7 +116,31 @@ namespace Rivet {
     }
 
     std::unique_ptr<StatementSyntax> Parser::ParseStatement() {
+        if (Current().Kind == TokenKind::IntKeyword || Current().Kind == TokenKind::MutKeyword)
+            return ParseLocalDeclaration();
+        if (Current().Kind == TokenKind::Identifier && Peek(1).Kind == TokenKind::Equals)
+            return ParseAssignmentStatement();
         return ParseReturnStatement();
+    }
+
+    std::unique_ptr<LocalDeclarationSyntax> Parser::ParseLocalDeclaration() {
+        Token mut{ TokenKind::MutKeyword, { Current().Span.Offset, 0 } };
+        if (Current().Kind == TokenKind::MutKeyword) mut = ConsumeToken();
+        Token type = MatchToken(TokenKind::IntKeyword, "expected local type 'int'");
+        Token name = MatchToken(TokenKind::Identifier, "expected local name");
+        Token equals = MatchToken(TokenKind::Equals, "expected '=' after local name");
+        auto initializer = ParseExpression();
+        Token semicolon = MatchToken(TokenKind::Semicolon, "expected ';' after local declaration");
+        return std::make_unique<LocalDeclarationSyntax>(mut, type, name, equals,
+            std::move(initializer), semicolon);
+    }
+
+    std::unique_ptr<AssignmentStatementSyntax> Parser::ParseAssignmentStatement() {
+        Token name = ConsumeToken();
+        Token equals = ConsumeToken();
+        auto value = ParseExpression();
+        Token semicolon = MatchToken(TokenKind::Semicolon, "expected ';' after assignment");
+        return std::make_unique<AssignmentStatementSyntax>(name, equals, std::move(value), semicolon);
     }
 
     std::unique_ptr<ReturnStatementSyntax> Parser::ParseReturnStatement() {
@@ -170,6 +194,8 @@ namespace Rivet {
 
         if (Current().Kind == TokenKind::IntegerLiteral) 
             return std::make_unique<LiteralExpressionSyntax>(ConsumeToken());
+        if (Current().Kind == TokenKind::Identifier)
+            return std::make_unique<NameExpressionSyntax>(ConsumeToken());
 
         m_Diagnostics.Report(DiagnosticCode::ExpectedExpression, DiagnosticSeverity::Error, Current().Span, "expected expression");
 

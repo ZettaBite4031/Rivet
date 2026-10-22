@@ -11,8 +11,11 @@ namespace Rivet {
             case BoundNodeKind::Function:          return "Function";
             case BoundNodeKind::BlockStatement:    return "BlockStatement";
             case BoundNodeKind::ReturnStatement:   return "ReturnStatement";
+            case BoundNodeKind::LocalDeclaration:  return "LocalDeclaration";
+            case BoundNodeKind::AssignmentStatement: return "AssignmentStatement";
             case BoundNodeKind::ErrorStatement:    return "ErrorStatement";
             case BoundNodeKind::LiteralExpression: return "LiteralExpression";
+            case BoundNodeKind::LocalExpression:   return "LocalExpression";
             case BoundNodeKind::UnaryExpression:   return "UnaryExpression";
             case BoundNodeKind::BinaryExpression:  return "BinaryExpression";
             case BoundNodeKind::ErrorExpression:   return "ErrorExpression";
@@ -67,6 +70,12 @@ namespace Rivet {
     const TypeSymbol& BoundLiteralExpression::Type() const noexcept {
         return BuiltinTypes::Int;
     }
+
+    BoundLocalExpression::BoundLocalExpression(std::size_t local, SourceSpan span) noexcept
+        : Local(local), NameSpan(span) {}
+    BoundNodeKind BoundLocalExpression::Kind() const noexcept { return BoundNodeKind::LocalExpression; }
+    SourceSpan BoundLocalExpression::Span() const noexcept { return NameSpan; }
+    const TypeSymbol& BoundLocalExpression::Type() const noexcept { return BuiltinTypes::Int; }
 
     BoundUnaryExpression::BoundUnaryExpression(
         BoundUnaryOperatorKind operator_kind,
@@ -152,6 +161,20 @@ namespace Rivet {
         return StatementSpan;
     }
 
+    BoundLocalDeclaration::BoundLocalDeclaration(std::size_t local,
+        std::unique_ptr<BoundExpression> initializer, SourceSpan span) noexcept
+        : Local(local), Initializer(std::move(initializer)), StatementSpan(span) {
+        assert(Initializer != nullptr);
+    }
+    BoundNodeKind BoundLocalDeclaration::Kind() const noexcept { return BoundNodeKind::LocalDeclaration; }
+    SourceSpan BoundLocalDeclaration::Span() const noexcept { return StatementSpan; }
+
+    BoundAssignmentStatement::BoundAssignmentStatement(std::size_t local,
+        std::unique_ptr<BoundExpression> value, SourceSpan span) noexcept
+        : Local(local), Value(std::move(value)), StatementSpan(span) { assert(Value != nullptr); }
+    BoundNodeKind BoundAssignmentStatement::Kind() const noexcept { return BoundNodeKind::AssignmentStatement; }
+    SourceSpan BoundAssignmentStatement::Span() const noexcept { return StatementSpan; }
+
     BoundErrorStatement::BoundErrorStatement(SourceSpan span) noexcept
         : ErrorSpan(span) {}
 
@@ -180,11 +203,13 @@ namespace Rivet {
     BoundFunction::BoundFunction(
         FunctionSymbol symbol,
         std::unique_ptr<BoundBlockStatement> body,
+        std::vector<LocalSymbol> locals,
         bool is_entry_point,
         SourceSpan span
     ) noexcept
         : Symbol(std::move(symbol)),
           Body(std::move(body)),
+          Locals(std::move(locals)),
           IsEntryPoint(is_entry_point),
           FunctionSpan(span) {
         assert(Symbol.ReturnType != nullptr);

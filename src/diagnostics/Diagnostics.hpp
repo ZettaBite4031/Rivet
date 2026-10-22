@@ -28,6 +28,9 @@ namespace Rivet {
         MissingEntryPoint = 202,
         IntegerLiteralOutOfRange = 203,
         MissingReturn = 204,
+        DuplicateLocal = 205,
+        UnknownLocal = 206,
+        ImmutableLocal = 207,
     };
 
     struct Diagnostic {

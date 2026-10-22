@@ -169,3 +169,9 @@ mode = "run"
 input = "execution/division_by_zero.rivet"
 diagnostics = "execution/division_by_zero.diag"
 exit = "compile_error"
+
+[[case]]
+name = "execution_locals"
+mode = "run"
+input = "execution/locals.rivet"
+expect = "execution/locals.run"

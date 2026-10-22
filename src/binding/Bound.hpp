@@ -3,6 +3,7 @@
 #include "source/Source.hpp"
 
 #include <cstdint>
+#include <cstddef>
 #include <iosfwd>
 #include <memory>
 #include <string>
@@ -31,13 +32,23 @@ namespace Rivet {
         SourceSpan DeclarationSpan;
     };
 
+    struct LocalSymbol final {
+        std::string Name;
+        const TypeSymbol* Type;
+        bool Mutable;
+        SourceSpan DeclarationSpan;
+    };
+
     enum class BoundNodeKind : std::uint8_t {
         CompilationUnit,
         Function,
         BlockStatement,
         ReturnStatement,
+        LocalDeclaration,
+        AssignmentStatement,
         ErrorStatement,
         LiteralExpression,
+        LocalExpression,
         UnaryExpression,
         BinaryExpression,
         ErrorExpression,
@@ -87,6 +98,16 @@ namespace Rivet {
 
         std::int32_t Value;
         SourceSpan LiteralSpan;
+    };
+
+    class BoundLocalExpression final : public BoundExpression {
+    public:
+        BoundLocalExpression(std::size_t local, SourceSpan span) noexcept;
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        [[nodiscard]] const TypeSymbol& Type() const noexcept override;
+        std::size_t Local;
+        SourceSpan NameSpan;
     };
 
     class BoundUnaryExpression final : public BoundExpression {
@@ -154,6 +175,28 @@ namespace Rivet {
         SourceSpan StatementSpan;
     };
 
+    class BoundLocalDeclaration final : public BoundStatement {
+    public:
+        BoundLocalDeclaration(std::size_t local, std::unique_ptr<BoundExpression> initializer,
+            SourceSpan span) noexcept;
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        std::size_t Local;
+        std::unique_ptr<BoundExpression> Initializer;
+        SourceSpan StatementSpan;
+    };
+
+    class BoundAssignmentStatement final : public BoundStatement {
+    public:
+        BoundAssignmentStatement(std::size_t local, std::unique_ptr<BoundExpression> value,
+            SourceSpan span) noexcept;
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        std::size_t Local;
+        std::unique_ptr<BoundExpression> Value;
+        SourceSpan StatementSpan;
+    };
+
     class BoundErrorStatement final : public BoundStatement {
     public:
         explicit BoundErrorStatement(SourceSpan span) noexcept;
@@ -183,6 +226,7 @@ namespace Rivet {
         BoundFunction(
             FunctionSymbol symbol,
             std::unique_ptr<BoundBlockStatement> body,
+            std::vector<LocalSymbol> locals,
             bool is_entry_point,
             SourceSpan span
         ) noexcept;
@@ -192,6 +236,7 @@ namespace Rivet {
 
         FunctionSymbol Symbol;
         std::unique_ptr<BoundBlockStatement> Body;
+        std::vector<LocalSymbol> Locals;
         bool IsEntryPoint;
         SourceSpan FunctionSpan;
     };

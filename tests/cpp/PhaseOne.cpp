@@ -144,6 +144,53 @@ namespace Rivet::Tests {
             REQUIRE(!added.has_value());
             REQUIRE_EQ(added.error().Code, std::string{ "R0002" });
         }
+
+        void ExecutesLocalsAndReassignment() {
+            Compiled result = Bind("module demo;\nint main() { int base = 40; mut int offset = 1; "
+                "offset = offset + 1; return base + offset; }\n");
+            REQUIRE(result.Diagnostics.Empty());
+            REQUIRE_EQ(result.Bound->Functions.front()->Locals.size(), std::size_t{ 2 });
+            REQUIRE(!result.Bound->Functions.front()->Locals.front().Mutable);
+            REQUIRE(result.Bound->Functions.front()->Locals.back().Mutable);
+            const RirModule module = LowerToRir(*result.Bound);
+            REQUIRE(VerifyRir(module).empty());
+            const auto value = RunRirMain(module);
+            REQUIRE(value.has_value());
+            REQUIRE_EQ(*value, std::int32_t{ 42 });
+
+            // A previous value keeps its register when a mutable local changes.
+            Compiled snapshot = Bind("module demo; int main() { mut int x = 3; "
+                "int old = x; x = 7; return old + x; }");
+            REQUIRE(snapshot.Diagnostics.Empty());
+            const RirModule snapshot_rir = LowerToRir(*snapshot.Bound);
+            REQUIRE(VerifyRir(snapshot_rir).empty());
+            REQUIRE_EQ(*RunRirMain(snapshot_rir), std::int32_t{ 10 });
+        }
+
+        void ChecksLocalNamesAndMutation() {
+            const auto first_error = [](std::string source) {
+                Compiled result = Bind(std::move(source));
+                REQUIRE(result.Diagnostics.HasErrors());
+                return result.Diagnostics.Items().front().Code;
+            };
+            REQUIRE(first_error("module demo; int main() { int x = 1; x = 2; return x; }")
+                == DiagnosticCode::ImmutableLocal);
+            REQUIRE(first_error("module demo; int main() { return missing; }")
+                == DiagnosticCode::UnknownLocal);
+            REQUIRE(first_error("module demo; int main() { missing = 2; return 1; }")
+                == DiagnosticCode::UnknownLocal);
+            REQUIRE(first_error("module demo; int main() { int x = 1; int x = 2; return x; }")
+                == DiagnosticCode::DuplicateLocal);
+            REQUIRE(first_error("module demo; int main() { int x = x; return 1; }")
+                == DiagnosticCode::UnknownLocal);
+            REQUIRE(first_error("module demo; int main() { int x = 1; }")
+                == DiagnosticCode::MissingReturn);
+
+            Compiled independent = Bind("module demo; int helper() { int x = 1; return x; } "
+                "int main() { return x; }");
+            REQUIRE(independent.Diagnostics.HasErrors());
+            REQUIRE(independent.Diagnostics.Items().front().Code == DiagnosticCode::UnknownLocal);
+        }
     }
 
     bool RunPhaseOneTests() {
@@ -157,6 +204,8 @@ namespace Rivet::Tests {
             TestCase{ "parses verifier fixture format", ParsesTextFixtureForVerifier },
             TestCase{ "executes a signed result", ExecutesSignedResult },
             TestCase{ "reports runtime arithmetic faults", ReportsRuntimeArithmeticFaults },
+            TestCase{ "executes locals and reassignment", ExecutesLocalsAndReassignment },
+            TestCase{ "checks local names and mutation", ChecksLocalNamesAndMutation },
         };
         return RunSuite("Phase one", tests);
     }

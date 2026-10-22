@@ -17,7 +17,10 @@ namespace Rivet {
         FunctionDefinition,
         BlockStatement,
         ReturnStatement,
+        LocalDeclaration,
+        AssignmentStatement,
         LiteralExpression,
+        NameExpression,
         UnaryExpression,
         BinaryExpression,
         ParenthesizedExpression,
@@ -58,6 +61,14 @@ namespace Rivet {
         [[nodiscard]] SourceSpan Span() const noexcept override;
 
         Token LiteralToken;
+    };
+
+    class NameExpressionSyntax final : public ExpressionSyntax {
+    public:
+        explicit NameExpressionSyntax(Token name) noexcept;
+        [[nodiscard]] SyntaxKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        Token NameToken;
     };
 
     class ErrorExpressionSyntax final : public ExpressionSyntax {
@@ -114,6 +125,32 @@ namespace Rivet {
 
         Token ReturnKeyword;
         std::unique_ptr<ExpressionSyntax> Expression;
+        Token SemicolonToken;
+    };
+
+    class LocalDeclarationSyntax final : public StatementSyntax {
+    public:
+        LocalDeclarationSyntax(Token mut_keyword, Token type, Token name, Token equals,
+            std::unique_ptr<ExpressionSyntax> initializer, Token semicolon) noexcept;
+        [[nodiscard]] SyntaxKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        Token MutKeyword;
+        Token TypeToken;
+        Token NameToken;
+        Token EqualsToken;
+        std::unique_ptr<ExpressionSyntax> Initializer;
+        Token SemicolonToken;
+    };
+
+    class AssignmentStatementSyntax final : public StatementSyntax {
+    public:
+        AssignmentStatementSyntax(Token name, Token equals,
+            std::unique_ptr<ExpressionSyntax> value, Token semicolon) noexcept;
+        [[nodiscard]] SyntaxKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        Token NameToken;
+        Token EqualsToken;
+        std::unique_ptr<ExpressionSyntax> Value;
         Token SemicolonToken;
     };
 

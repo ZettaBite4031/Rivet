@@ -1,0 +1,8 @@
+module demo;
+
+int main() {
+    int base = 40;
+    mut int adjustment = 1;
+    adjustment = adjustment + 1;
+    return base + adjustment;
+}

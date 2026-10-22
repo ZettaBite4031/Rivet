@@ -16,6 +16,7 @@ namespace Rivet {
 
         ModuleKeyword,
         IntKeyword,
+        MutKeyword,
         ReturnKeyword,
 
         OpenParen,
@@ -24,6 +25,7 @@ namespace Rivet {
         CloseBrace,
         Semicolon,
         Dot,
+        Equals,
 
         Plus,
         Minus,

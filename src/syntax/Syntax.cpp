@@ -19,7 +19,10 @@ namespace Rivet {
         case SyntaxKind::FunctionDefinition:      return "FunctionDefinition";
         case SyntaxKind::BlockStatement:          return "BlockStatement";
         case SyntaxKind::ReturnStatement:         return "ReturnStatement";
+        case SyntaxKind::LocalDeclaration:        return "LocalDeclaration";
+        case SyntaxKind::AssignmentStatement:     return "AssignmentStatement";
         case SyntaxKind::LiteralExpression:       return "LiteralExpression";
+        case SyntaxKind::NameExpression:          return "NameExpression";
         case SyntaxKind::UnaryExpression:         return "UnaryExpression";
         case SyntaxKind::BinaryExpression:        return "BinaryExpression";
         case SyntaxKind::ParenthesizedExpression: return "ParenthesizedExpression";
@@ -57,6 +60,10 @@ namespace Rivet {
     SourceSpan LiteralExpressionSyntax::Span() const noexcept {
         return LiteralToken.Span;
     }
+
+    NameExpressionSyntax::NameExpressionSyntax(Token name) noexcept : NameToken(name) {}
+    SyntaxKind NameExpressionSyntax::Kind() const noexcept { return SyntaxKind::NameExpression; }
+    SourceSpan NameExpressionSyntax::Span() const noexcept { return NameToken.Span; }
 
     ErrorExpressionSyntax::ErrorExpressionSyntax(SourceSpan error_span) noexcept
         : ErrorSpan(error_span) {}
@@ -111,6 +118,25 @@ namespace Rivet {
 
     SourceSpan ReturnStatementSyntax::Span() const noexcept {
         return CoveringSpan(ReturnKeyword.Span, SemicolonToken.Span);
+    }
+
+    LocalDeclarationSyntax::LocalDeclarationSyntax(Token mut_keyword, Token type, Token name, Token equals,
+        std::unique_ptr<ExpressionSyntax> initializer, Token semicolon) noexcept
+        : MutKeyword(mut_keyword), TypeToken(type), NameToken(name), EqualsToken(equals),
+          Initializer(std::move(initializer)), SemicolonToken(semicolon) { assert(Initializer != nullptr); }
+    SyntaxKind LocalDeclarationSyntax::Kind() const noexcept { return SyntaxKind::LocalDeclaration; }
+    SourceSpan LocalDeclarationSyntax::Span() const noexcept {
+        return CoveringSpan(MutKeyword.Span.Empty() ? TypeToken.Span : MutKeyword.Span, SemicolonToken.Span);
+    }
+
+    AssignmentStatementSyntax::AssignmentStatementSyntax(Token name, Token equals,
+        std::unique_ptr<ExpressionSyntax> value, Token semicolon) noexcept
+        : NameToken(name), EqualsToken(equals), Value(std::move(value)), SemicolonToken(semicolon) {
+        assert(Value != nullptr);
+    }
+    SyntaxKind AssignmentStatementSyntax::Kind() const noexcept { return SyntaxKind::AssignmentStatement; }
+    SourceSpan AssignmentStatementSyntax::Span() const noexcept {
+        return CoveringSpan(NameToken.Span, SemicolonToken.Span);
     }
 
     BlockStatementSyntax::BlockStatementSyntax(Token open_brace_token, std::vector<std::unique_ptr<StatementSyntax>> statements, Token close_brace_token) noexcept

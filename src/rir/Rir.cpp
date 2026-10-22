@@ -11,15 +11,33 @@ namespace {
 
         Rivet::RirFunction Lower(const Rivet::BoundBlockStatement& body) {
             for (const auto& statement : body.Statements) {
-                if (statement->Kind() != Rivet::BoundNodeKind::ReturnStatement) continue;
-                const auto& returned = static_cast<const Rivet::BoundReturnStatement&>(*statement);
-                const std::size_t value = Expression(*returned.Expression);
-                m_Function.Instructions.push_back(Rivet::RirInstruction{
-                    .Op = Rivet::RirOp::Return,
-                    .Left = value,
-                    .Span = returned.Span(),
-                });
-                break;
+                using namespace Rivet;
+                switch (statement->Kind()) {
+                case BoundNodeKind::LocalDeclaration: {
+                    const auto& declared = static_cast<const BoundLocalDeclaration&>(*statement);
+                    assert(declared.Local == m_LocalValues.size());
+                    m_LocalValues.push_back(Expression(*declared.Initializer));
+                    break;
+                }
+                case BoundNodeKind::AssignmentStatement: {
+                    const auto& assigned = static_cast<const BoundAssignmentStatement&>(*statement);
+                    const std::size_t value = Expression(*assigned.Value);
+                    assert(assigned.Local < m_LocalValues.size());
+                    m_LocalValues[assigned.Local] = value;
+                    break;
+                }
+                case BoundNodeKind::ReturnStatement: {
+                    const auto& returned = static_cast<const BoundReturnStatement&>(*statement);
+                    const std::size_t value = Expression(*returned.Expression);
+                    m_Function.Instructions.push_back(RirInstruction{
+                        .Op = RirOp::Return, .Left = value, .Span = returned.Span(),
+                    });
+                    return std::move(m_Function);
+                }
+                default:
+                    assert(false && "invalid bound statement reached RIR lowering");
+                    break;
+                }
             }
             return std::move(m_Function);
         }
@@ -30,27 +48,26 @@ namespace {
             const std::size_t result = instruction.Result;
             m_Function.Instructions.push_back(instruction);
             return result;
-        }    
+        }
 
         std::size_t Expression(const Rivet::BoundExpression& expression) {
             using namespace Rivet;
             switch (expression.Kind()) {
             case BoundNodeKind::LiteralExpression: {
                 const auto& literal = static_cast<const BoundLiteralExpression&>(expression);
-                return Emit(RirInstruction{ 
-                    .Op = RirOp::Const, 
-                    .Immediate = literal.Value,
-                    .Span = literal.Span() 
-                });
+                return Emit(RirInstruction{ .Op = RirOp::Const, .Immediate = literal.Value,
+                    .Span = literal.Span() });
+            }
+            case BoundNodeKind::LocalExpression: {
+                const auto& local = static_cast<const BoundLocalExpression&>(expression);
+                assert(local.Local < m_LocalValues.size());
+                return m_LocalValues[local.Local];
             }
             case BoundNodeKind::UnaryExpression: {
                 const auto& unary = static_cast<const BoundUnaryExpression&>(expression);
                 const std::size_t operand = Expression(*unary.Operand);
-                return Emit(RirInstruction{ 
-                    .Op = unary.OperatorKind == BoundUnaryOperatorKind::Negation ? RirOp::Negate : RirOp::Identity, 
-                    .Left = operand, 
-                    .Span = unary.OperatorSpan 
-                });
+                return Emit(RirInstruction{ .Op = unary.OperatorKind == BoundUnaryOperatorKind::Negation
+                    ? RirOp::Negate : RirOp::Identity, .Left = operand, .Span = unary.OperatorSpan });
             }
             case BoundNodeKind::BinaryExpression: {
                 const auto& binary = static_cast<const BoundBinaryExpression&>(expression);
@@ -63,12 +80,8 @@ namespace {
                 case BoundBinaryOperatorKind::Multiplication: op = RirOp::Multiply; break;
                 case BoundBinaryOperatorKind::Division:       op = RirOp::Divide; break;
                 }
-                return Emit(RirInstruction{ 
-                    .Op = op, 
-                    .Left = left, 
-                    .Right = right,
-                    .Span = binary.OperatorSpan 
-                });
+                return Emit(RirInstruction{ .Op = op, .Left = left, .Right = right,
+                    .Span = binary.OperatorSpan });
             }
             default:
                 assert(false && "invalid bound expression reached RIR lowering");
@@ -78,6 +91,7 @@ namespace {
 
         Rivet::RirFunction m_Function;
         std::size_t m_NextValue{ 0 };
+        std::vector<std::size_t> m_LocalValues;
     };
 
     const char* OperationName(Rivet::RirOp op) {
