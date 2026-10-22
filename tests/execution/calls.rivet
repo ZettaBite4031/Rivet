@@ -1,0 +1,13 @@
+module demo;
+
+int main() {
+    return twice(sum(19, 2));
+}
+
+int twice(int value) {
+    return value + value;
+}
+
+int sum(int left, int right) {
+    return left + right;
+}

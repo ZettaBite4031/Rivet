@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -15,7 +16,7 @@ namespace {
     using Rivet::RirInstruction;
     using Rivet::RirOp;
 
-    bool UsesLeft(RirOp op) { return op != RirOp::Const; }
+    bool UsesLeft(RirOp op) { return op != RirOp::Const && op != RirOp::Call; }
     bool UsesRight(RirOp op) {
         return op == RirOp::Add || op == RirOp::Subtract || op == RirOp::Multiply || op == RirOp::Divide;
     }
@@ -46,11 +47,16 @@ namespace Rivet {
     std::vector<RirIssue> VerifyRir(const RirModule& module) {
         std::vector<RirIssue> issues;
         std::unordered_set<std::string> names;
+        std::unordered_map<std::string, std::size_t> signatures;
+        for (const RirFunction& function : module.Functions)
+            signatures.emplace(function.Name, function.ParameterCount);
         for (const RirFunction& function : module.Functions) {
             if (!names.insert(function.Name).second)
                 issues.push_back({ "ICE-RIR-004", "duplicate function '@" + function.Name + "'" });
 
             std::unordered_set<std::size_t> defined;
+            for (std::size_t index = 0; index < function.ParameterCount; ++index)
+                defined.insert(index);
             bool terminated = false;
             for (const RirInstruction& instruction : function.Instructions) {
                 if (terminated) {
@@ -64,6 +70,16 @@ namespace Rivet {
                 };
                 if (UsesLeft(instruction.Op)) require_value(instruction.Left);
                 if (UsesRight(instruction.Op)) require_value(instruction.Right);
+                if (instruction.Op == RirOp::Call) {
+                    for (std::size_t argument : instruction.Arguments) require_value(argument);
+                    const auto callee = signatures.find(instruction.Callee);
+                    if (callee == signatures.end())
+                        issues.push_back({ "ICE-RIR-006", "call references unknown function '@"
+                            + instruction.Callee + "'" });
+                    else if (callee->second != instruction.Arguments.size())
+                        issues.push_back({ "ICE-RIR-007", "call to '@" + instruction.Callee
+                            + "' has wrong argument count" });
+                }
                 if (instruction.Op == RirOp::Return) terminated = true;
                 else if (!defined.insert(instruction.Result).second)
                     issues.push_back({ "ICE-RIR-005", "value '$" + std::to_string(instruction.Result)
@@ -92,11 +108,29 @@ namespace Rivet {
             switch (state) {
             case State::Function: {
                 constexpr std::string_view prefix = "function int @";
-                if (!text_line.starts_with(prefix) || !text_line.ends_with("()"))
+                if (!text_line.starts_with(prefix) || !text_line.ends_with(")"))
                     return invalid("expected function signature");
-                const std::string_view name = text_line.substr(prefix.size(), text_line.size() - prefix.size() - 2);
+                const std::size_t open = text_line.find('(', prefix.size());
+                if (open == std::string_view::npos) return invalid("expected function parameters");
+                const std::string_view name = text_line.substr(prefix.size(), open - prefix.size());
                 if (name.empty()) return invalid("expected function name");
-                module.Functions.push_back(RirFunction{ .Name = std::string{ name } });
+                const std::string_view parameters = text_line.substr(open + 1, text_line.size() - open - 2);
+                std::size_t count = 0;
+                std::size_t begin = 0;
+                while (begin < parameters.size()) {
+                    const std::size_t comma = parameters.find(',', begin);
+                    const std::string_view item = Trim(parameters.substr(begin,
+                        comma == std::string_view::npos ? comma : comma - begin));
+                    std::size_t register_id = 0;
+                    if (!item.starts_with("int ") || !ParseRegister(item.substr(4), register_id)
+                        || register_id != count) return invalid("invalid parameter register");
+                    ++count;
+                    if (comma == std::string_view::npos) break;
+                    begin = comma + 1;
+                    if (begin == parameters.size()) return invalid("trailing parameter comma");
+                }
+                module.Functions.push_back(RirFunction{ .Name = std::string{ name },
+                    .ParameterCount = count });
                 state = State::OpenBrace;
                 break;
             }
@@ -127,6 +161,31 @@ namespace Rivet {
                     if (operation == "const") {
                         instruction.Op = RirOp::Const;
                         if (!ParseI32(first_operand, instruction.Immediate)) return invalid("invalid int constant");
+                    } else if (operation == "call") {
+                        instruction.Op = RirOp::Call;
+                        std::string rest;
+                        std::getline(parts, rest);
+                        const std::string call = first_operand + rest;
+                        const std::string_view call_text = Trim(call);
+                        const std::size_t open = call_text.find('(');
+                        if (!call_text.starts_with('@') || open == std::string_view::npos
+                            || !call_text.ends_with(")") || open <= 1)
+                            return invalid("malformed call");
+                        instruction.Callee = std::string{ call_text.substr(1, open - 1) };
+                        const std::string_view arguments = call_text.substr(open + 1,
+                            call_text.size() - open - 2);
+                        std::size_t begin = 0;
+                        while (begin < arguments.size()) {
+                            const std::size_t comma = arguments.find(',', begin);
+                            std::size_t argument = 0;
+                            if (!ParseRegister(Trim(arguments.substr(begin,
+                                    comma == std::string_view::npos ? comma : comma - begin)), argument))
+                                return invalid("invalid call argument");
+                            instruction.Arguments.push_back(argument);
+                            if (comma == std::string_view::npos) break;
+                            begin = comma + 1;
+                            if (begin == arguments.size()) return invalid("trailing call comma");
+                        }
                     } else {
                         if (!ParseRegister(first_operand, instruction.Left)) return invalid("invalid first operand");
                         if (operation == "identity") instruction.Op = RirOp::Identity;

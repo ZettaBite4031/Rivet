@@ -30,6 +30,7 @@ namespace Rivet {
         std::string Name;
         const TypeSymbol* ReturnType;
         SourceSpan DeclarationSpan;
+        std::size_t ParameterCount{ 0 };
     };
 
     struct LocalSymbol final {
@@ -49,6 +50,7 @@ namespace Rivet {
         ErrorStatement,
         LiteralExpression,
         LocalExpression,
+        CallExpression,
         UnaryExpression,
         BinaryExpression,
         ErrorExpression,
@@ -108,6 +110,18 @@ namespace Rivet {
         [[nodiscard]] const TypeSymbol& Type() const noexcept override;
         std::size_t Local;
         SourceSpan NameSpan;
+    };
+
+    class BoundCallExpression final : public BoundExpression {
+    public:
+        BoundCallExpression(std::string callee,
+            std::vector<std::unique_ptr<BoundExpression>> arguments, SourceSpan span) noexcept;
+        [[nodiscard]] BoundNodeKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        [[nodiscard]] const TypeSymbol& Type() const noexcept override;
+        std::string Callee;
+        std::vector<std::unique_ptr<BoundExpression>> Arguments;
+        SourceSpan CallSpan;
     };
 
     class BoundUnaryExpression final : public BoundExpression {

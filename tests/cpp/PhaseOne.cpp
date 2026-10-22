@@ -191,6 +191,72 @@ namespace Rivet::Tests {
             REQUIRE(independent.Diagnostics.HasErrors());
             REQUIRE(independent.Diagnostics.Items().front().Code == DiagnosticCode::UnknownLocal);
         }
+
+        void CallsForwardFunctionsWithParameters() {
+            Compiled result = Bind("module demo; int main() { return twice(sum(19, 2)); } "
+                "int twice(int value) { return value + value; } "
+                "int sum(int left, int right) { return left + right; }");
+            REQUIRE(result.Diagnostics.Empty());
+            const RirModule module = LowerToRir(*result.Bound);
+            REQUIRE(VerifyRir(module).empty());
+            const auto executed = RunRirMain(module);
+            REQUIRE(executed.has_value());
+            REQUIRE_EQ(*executed, std::int32_t{ 42 });
+
+            std::ostringstream printed;
+            WriteRir(printed, module);
+            RirModule parsed;
+            REQUIRE(ParseRirText(printed.str(), parsed).empty());
+            REQUIRE(VerifyRir(parsed).empty());
+            REQUIRE_EQ(*RunRirMain(parsed), std::int32_t{ 42 });
+
+            Compiled zero_args = Bind("module demo; int main() { return answer(); } "
+                "int answer() { return 42; }");
+            REQUIRE(zero_args.Diagnostics.Empty());
+            const RirModule zero_rir = LowerToRir(*zero_args.Bound);
+            REQUIRE(VerifyRir(zero_rir).empty());
+            REQUIRE_EQ(*RunRirMain(zero_rir), std::int32_t{ 42 });
+        }
+
+        void RejectsInvalidCallsAndParameters() {
+            const auto first_error = [](std::string source) {
+                Compiled result = Bind(std::move(source));
+                REQUIRE(result.Diagnostics.HasErrors());
+                return result.Diagnostics.Items().front().Code;
+            };
+            REQUIRE(first_error("module demo; int main() { return missing(1); }")
+                == DiagnosticCode::UnknownFunction);
+            REQUIRE(first_error("module demo; int main() { return twice(1); } "
+                "int twice(int a, int b) { return a + b; }")
+                == DiagnosticCode::ArgumentCountMismatch);
+            REQUIRE(first_error("module demo; int main(int value) { return value; }")
+                == DiagnosticCode::InvalidEntryPoint);
+            REQUIRE(first_error("module demo; int f(int x, int x) { return x; } "
+                "int main() { return f(1, 2); }")
+                == DiagnosticCode::DuplicateLocal);
+            REQUIRE(first_error("module demo; int f(int value) { value = 3; return value; } "
+                "int main() { return f(1); }")
+                == DiagnosticCode::ImmutableLocal);
+        }
+
+        void VerifiesCallTargetsAndStopsUnboundedRecursion() {
+            RirModule invalid{ .Name = "demo" };
+            invalid.Functions.push_back(RirFunction{ .Name = "main" });
+            invalid.Functions.front().Instructions.push_back(RirInstruction{
+                .Op = RirOp::Call, .Result = 0, .Callee = "missing" });
+            invalid.Functions.front().Instructions.push_back(RirInstruction{
+                .Op = RirOp::Return, .Left = 0 });
+            const auto issues = VerifyRir(invalid);
+            REQUIRE_EQ(issues.size(), std::size_t{ 1 });
+            REQUIRE_EQ(issues.front().Code, std::string{ "ICE-RIR-006" });
+
+            Compiled recursive = Bind("module demo; int main() { return loop(0); } "
+                "int loop(int x) { return loop(x); }");
+            REQUIRE(recursive.Diagnostics.Empty());
+            const auto value = RunRirMain(LowerToRir(*recursive.Bound));
+            REQUIRE(!value.has_value());
+            REQUIRE_EQ(value.error().Code, std::string{ "R0004" });
+        }
     }
 
     bool RunPhaseOneTests() {
@@ -206,6 +272,9 @@ namespace Rivet::Tests {
             TestCase{ "reports runtime arithmetic faults", ReportsRuntimeArithmeticFaults },
             TestCase{ "executes locals and reassignment", ExecutesLocalsAndReassignment },
             TestCase{ "checks local names and mutation", ChecksLocalNamesAndMutation },
+            TestCase{ "calls forward functions with parameters", CallsForwardFunctionsWithParameters },
+            TestCase{ "rejects invalid calls and parameters", RejectsInvalidCallsAndParameters },
+            TestCase{ "verifies calls and bounds recursion", VerifiesCallTargetsAndStopsUnboundedRecursion },
         };
         return RunSuite("Phase one", tests);
     }

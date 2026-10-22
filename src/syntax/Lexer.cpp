@@ -93,6 +93,7 @@ namespace Rivet {
             case '{': kind = TokenKind::OpenBrace;  break;
             case '}': kind = TokenKind::CloseBrace; break;
             case ';': kind = TokenKind::Semicolon;  break;
+            case ',': kind = TokenKind::Comma;      break;
             case '.': kind = TokenKind::Dot;        break;
             case '=': kind = TokenKind::Equals;     break;
             case '+': kind = TokenKind::Plus;       break;

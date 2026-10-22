@@ -98,6 +98,7 @@ namespace Rivet {
                     .Name = std::move(name),
                     .ReturnType = &BuiltinTypes::Int,
                     .DeclarationSpan = function.IdentifierToken.Span,
+                    .ParameterCount = function.Parameters.size(),
                 },
                 .Syntax = &function,
             });
@@ -110,8 +111,14 @@ namespace Rivet {
         if (m_HasStructurallyInvalidDeclaration)
             return;
 
-        if (m_FunctionIndices.contains("main"))
+        const auto main = m_FunctionIndices.find("main");
+        if (main != m_FunctionIndices.end()) {
+            const FunctionSymbol& symbol = m_Declarations[main->second].Symbol;
+            if (symbol.ParameterCount != 0)
+                m_Diagnostics.Report(DiagnosticCode::InvalidEntryPoint, DiagnosticSeverity::Error,
+                    symbol.DeclarationSpan, "entry point must be 'int main()' with no parameters");
             return;
+        }
 
         m_Diagnostics.Report(
             DiagnosticCode::MissingEntryPoint,
@@ -128,6 +135,22 @@ namespace Rivet {
         assert(declaration.Syntax->Body != nullptr);
         m_Locals.clear();
         m_LocalIndices.clear();
+        for (const auto& parameter : declaration.Syntax->Parameters) {
+            if (parameter.NameToken.Span.Empty()) continue;
+            std::string name{ parameter.NameToken.Text(m_Source) };
+            const auto previous = m_LocalIndices.find(name);
+            if (previous != m_LocalIndices.end()) {
+                m_Diagnostics.Report(DiagnosticCode::DuplicateLocal, DiagnosticSeverity::Error,
+                    parameter.NameToken.Span, "parameter '" + name + "' is already declared");
+                m_Diagnostics.Report(DiagnosticCode::DuplicateLocal, DiagnosticSeverity::Note,
+                    m_Locals[previous->second].DeclarationSpan, "previous declaration is here");
+                continue;
+            }
+            const std::size_t id = m_Locals.size();
+            m_LocalIndices.emplace(name, id);
+            m_Locals.push_back(LocalSymbol{ std::move(name), &BuiltinTypes::Int,
+                false, parameter.NameToken.Span });
+        }
 
         std::unique_ptr<BoundBlockStatement> body =
             BindBlockStatement(*declaration.Syntax->Body);
@@ -255,6 +278,9 @@ namespace Rivet {
                 }
                 return std::make_unique<BoundLocalExpression>(found->second, syntax.Span());
             }
+
+            case SyntaxKind::CallExpression:
+                return BindCallExpression(static_cast<const CallExpressionSyntax&>(syntax));
 
             case SyntaxKind::UnaryExpression:
                 return BindUnaryExpression(
@@ -426,5 +452,33 @@ namespace Rivet {
             std::move(right),
             syntax.Span()
         );
+    }
+
+    std::unique_ptr<BoundExpression> Binder::BindCallExpression(const CallExpressionSyntax& syntax) {
+        std::vector<std::unique_ptr<BoundExpression>> arguments;
+        arguments.reserve(syntax.Arguments.size());
+        bool invalid_argument = false;
+        for (const auto& argument : syntax.Arguments) {
+            auto bound = BindExpression(*argument);
+            invalid_argument |= bound->Type().Kind == TypeKind::Error;
+            arguments.push_back(std::move(bound));
+        }
+        const std::string name{ syntax.NameToken.Text(m_Source) };
+        const auto found = m_FunctionIndices.find(name);
+        if (found == m_FunctionIndices.end()) {
+            m_Diagnostics.Report(DiagnosticCode::UnknownFunction, DiagnosticSeverity::Error,
+                syntax.NameToken.Span, "unknown function '" + name + "'");
+            return std::make_unique<BoundErrorExpression>(syntax.Span());
+        }
+        const FunctionSymbol& symbol = m_Declarations[found->second].Symbol;
+        if (arguments.size() != symbol.ParameterCount) {
+            m_Diagnostics.Report(DiagnosticCode::ArgumentCountMismatch, DiagnosticSeverity::Error,
+                syntax.Span(), "function '" + name + "' expects "
+                    + std::to_string(symbol.ParameterCount) + " argument(s), got "
+                    + std::to_string(arguments.size()));
+            return std::make_unique<BoundErrorExpression>(syntax.Span());
+        }
+        if (invalid_argument) return std::make_unique<BoundErrorExpression>(syntax.Span());
+        return std::make_unique<BoundCallExpression>(name, std::move(arguments), syntax.Span());
     }
 }

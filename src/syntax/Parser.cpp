@@ -95,10 +95,21 @@ namespace Rivet {
         Token type_token = MatchToken(TokenKind::IntKeyword, "expected function return type 'int'");
         Token identifier_token = MatchToken(TokenKind::Identifier, "expected function name");
         Token open_paren_token = MatchToken(TokenKind::OpenParen, "expected '(' after function name");
+        std::vector<FunctionDefinitionSyntax::Parameter> parameters;
+        while (Current().Kind != TokenKind::CloseParen && Current().Kind != TokenKind::EndOfFile) {
+            if (Current().Kind != TokenKind::IntKeyword) break;
+            Token type = ConsumeToken();
+            Token name = MatchToken(TokenKind::Identifier, "expected parameter name");
+            Token comma{ TokenKind::Comma, { Current().Span.Offset, 0 } };
+            if (Current().Kind == TokenKind::Comma) comma = ConsumeToken();
+            parameters.push_back({ type, name, comma });
+            if (comma.Span.Empty()) break;
+        }
         Token close_paren_token = MatchToken(TokenKind::CloseParen, "expected ')' after function parameters");
 
         std::unique_ptr<BlockStatementSyntax> body = ParseBlockStatement();
-        return std::make_unique<FunctionDefinitionSyntax>(type_token, identifier_token, open_paren_token, close_paren_token, std::move(body));
+        return std::make_unique<FunctionDefinitionSyntax>(type_token, identifier_token,
+            open_paren_token, std::move(parameters), close_paren_token, std::move(body));
     }
 
     std::unique_ptr<BlockStatementSyntax> Parser::ParseBlockStatement() {
@@ -123,6 +134,13 @@ namespace Rivet {
         return ParseReturnStatement();
     }
 
+    std::unique_ptr<ReturnStatementSyntax> Parser::ParseReturnStatement() {
+        Token return_keyword = MatchToken(TokenKind::ReturnKeyword, "expected 'return' statement");
+        std::unique_ptr<ExpressionSyntax> expression = ParseExpression();
+        Token semicolon_token = MatchToken(TokenKind::Semicolon, "expected ';' after return expression");
+        return std::make_unique<ReturnStatementSyntax>(return_keyword, std::move(expression), semicolon_token);
+    }
+
     std::unique_ptr<LocalDeclarationSyntax> Parser::ParseLocalDeclaration() {
         Token mut{ TokenKind::MutKeyword, { Current().Span.Offset, 0 } };
         if (Current().Kind == TokenKind::MutKeyword) mut = ConsumeToken();
@@ -141,13 +159,6 @@ namespace Rivet {
         auto value = ParseExpression();
         Token semicolon = MatchToken(TokenKind::Semicolon, "expected ';' after assignment");
         return std::make_unique<AssignmentStatementSyntax>(name, equals, std::move(value), semicolon);
-    }
-
-    std::unique_ptr<ReturnStatementSyntax> Parser::ParseReturnStatement() {
-        Token return_keyword = MatchToken(TokenKind::ReturnKeyword, "expected 'return' statement");
-        std::unique_ptr<ExpressionSyntax> expression = ParseExpression();
-        Token semicolon_token = MatchToken(TokenKind::Semicolon, "expected ';' after return expression");
-        return std::make_unique<ReturnStatementSyntax>(return_keyword, std::move(expression), semicolon_token);
     }
 
     std::unique_ptr<ExpressionSyntax> Parser::ParseExpression(int parent_precendence) {
@@ -194,6 +205,8 @@ namespace Rivet {
 
         if (Current().Kind == TokenKind::IntegerLiteral) 
             return std::make_unique<LiteralExpressionSyntax>(ConsumeToken());
+        if (Current().Kind == TokenKind::Identifier && Peek(1).Kind == TokenKind::OpenParen)
+            return ParseCallExpression();
         if (Current().Kind == TokenKind::Identifier)
             return std::make_unique<NameExpressionSyntax>(ConsumeToken());
 
@@ -202,6 +215,21 @@ namespace Rivet {
         if (IsExpressionBoundary(Current().Kind) || IsFunctionStart())
             return std::make_unique<ErrorExpressionSyntax>(SourceSpan{ .Offset = Current().Span.Offset, .Length = 0 });
         return std::make_unique<ErrorExpressionSyntax>(ConsumeToken().Span);
+    }
+
+    std::unique_ptr<CallExpressionSyntax> Parser::ParseCallExpression() {
+        Token name = ConsumeToken();
+        Token open_paren = ConsumeToken();
+        std::vector<std::unique_ptr<ExpressionSyntax>> arguments;
+        std::vector<Token> commas;
+        while (Current().Kind != TokenKind::CloseParen && Current().Kind != TokenKind::EndOfFile) {
+            arguments.push_back(ParseExpression());
+            if (Current().Kind != TokenKind::Comma) break;
+            commas.push_back(ConsumeToken());
+        }
+        Token close_paren = MatchToken(TokenKind::CloseParen, "expected ')' after call arguments");
+        return std::make_unique<CallExpressionSyntax>(name, open_paren,
+            std::move(arguments), std::move(commas), close_paren);
     }
 
     std::unique_ptr<ExpressionSyntax> Parser::MakeMissingExpression(std::string message) {
@@ -216,6 +244,7 @@ namespace Rivet {
     bool Parser::IsExpressionBoundary(TokenKind kind) noexcept {
         switch (kind) {
         case TokenKind::Semicolon:
+        case TokenKind::Comma:
         case TokenKind::CloseParen:
         case TokenKind::CloseBrace:
         case TokenKind::EndOfFile:

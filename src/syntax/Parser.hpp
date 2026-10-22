@@ -36,6 +36,7 @@ namespace Rivet {
 
         [[nodiscard]] std::unique_ptr<ExpressionSyntax> ParseExpression(int parent_precedence = 0);
         [[nodiscard]] std::unique_ptr<ExpressionSyntax> ParsePrimaryExpression();
+        [[nodiscard]] std::unique_ptr<CallExpressionSyntax> ParseCallExpression();
         [[nodiscard]] std::unique_ptr<ExpressionSyntax> MakeMissingExpression(std::string message);
 
         [[nodiscard]] bool IsFunctionStart() const noexcept;

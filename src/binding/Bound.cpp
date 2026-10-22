@@ -16,6 +16,7 @@ namespace Rivet {
             case BoundNodeKind::ErrorStatement:    return "ErrorStatement";
             case BoundNodeKind::LiteralExpression: return "LiteralExpression";
             case BoundNodeKind::LocalExpression:   return "LocalExpression";
+            case BoundNodeKind::CallExpression:    return "CallExpression";
             case BoundNodeKind::UnaryExpression:   return "UnaryExpression";
             case BoundNodeKind::BinaryExpression:  return "BinaryExpression";
             case BoundNodeKind::ErrorExpression:   return "ErrorExpression";
@@ -76,6 +77,13 @@ namespace Rivet {
     BoundNodeKind BoundLocalExpression::Kind() const noexcept { return BoundNodeKind::LocalExpression; }
     SourceSpan BoundLocalExpression::Span() const noexcept { return NameSpan; }
     const TypeSymbol& BoundLocalExpression::Type() const noexcept { return BuiltinTypes::Int; }
+
+    BoundCallExpression::BoundCallExpression(std::string callee, std::vector<std::unique_ptr<BoundExpression>> arguments, SourceSpan span) noexcept
+        : Callee(std::move(callee)), Arguments(std::move(arguments)), CallSpan(span) {}
+    
+    BoundNodeKind BoundCallExpression::Kind() const noexcept { return BoundNodeKind::CallExpression; }
+    SourceSpan BoundCallExpression::Span() const noexcept { return CallSpan; }
+    const TypeSymbol& BoundCallExpression::Type() const noexcept { return BuiltinTypes::Int; }
 
     BoundUnaryExpression::BoundUnaryExpression(
         BoundUnaryOperatorKind operator_kind,

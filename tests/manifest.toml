@@ -175,3 +175,10 @@ name = "execution_locals"
 mode = "run"
 input = "execution/locals.rivet"
 expect = "execution/locals.run"
+
+[[case]]
+name = "execution_calls"
+mode = "run"
+input = "execution/calls.rivet"
+expect = "execution/calls.run"
+

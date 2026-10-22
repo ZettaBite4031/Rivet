@@ -7,7 +7,13 @@
 namespace {
     class FunctionLowerer final {
     public:
-        explicit FunctionLowerer(std::string name) { m_Function.Name = std::move(name); }
+        FunctionLowerer(std::string name, std::size_t parameter_count) {
+            m_Function.Name = std::move(name);
+            m_Function.ParameterCount = parameter_count;
+            m_NextValue = parameter_count;
+            for (std::size_t index = 0; index < parameter_count; ++index)
+                m_LocalValues.push_back(index);
+        }
 
         Rivet::RirFunction Lower(const Rivet::BoundBlockStatement& body) {
             for (const auto& statement : body.Statements) {
@@ -63,6 +69,15 @@ namespace {
                 assert(local.Local < m_LocalValues.size());
                 return m_LocalValues[local.Local];
             }
+            case BoundNodeKind::CallExpression: {
+                const auto& call = static_cast<const BoundCallExpression&>(expression);
+                std::vector<std::size_t> arguments;
+                arguments.reserve(call.Arguments.size());
+                for (const auto& argument : call.Arguments)
+                    arguments.push_back(Expression(*argument));
+                return Emit(RirInstruction{ .Op = RirOp::Call, .Span = call.Span(),
+                    .Callee = call.Callee, .Arguments = std::move(arguments) });
+            }
             case BoundNodeKind::UnaryExpression: {
                 const auto& unary = static_cast<const BoundUnaryExpression&>(expression);
                 const std::size_t operand = Expression(*unary.Operand);
@@ -104,6 +119,7 @@ namespace {
         case RirOp::Identity: return "identity";
         case RirOp::Negate: return "negate";
         case RirOp::Const: return "const";
+        case RirOp::Call: return "call";
         case RirOp::Return: return "return";
         }
         return "?";
@@ -114,7 +130,7 @@ namespace Rivet {
     RirModule LowerToRir(const BoundCompilationUnit& unit) {
         RirModule result{ .Name = unit.ModuleName };
         for (const auto& function : unit.Functions) {
-            FunctionLowerer lowerer{ function->Symbol.Name };
+            FunctionLowerer lowerer{ function->Symbol.Name, function->Symbol.ParameterCount };
             result.Functions.push_back(lowerer.Lower(*function->Body));
         }
         return result;
@@ -122,7 +138,12 @@ namespace Rivet {
 
     void WriteRir(std::ostream& output, const RirModule& module) {
         for (const RirFunction& function : module.Functions) {
-            output << "function int @" << function.Name << "()\n{\nentry:\n";
+            output << "function int @" << function.Name << '(';
+            for (std::size_t index = 0; index < function.ParameterCount; ++index) {
+                if (index) output << ", ";
+                output << "int $" << index;
+            }
+            output << ")\n{\nentry:\n";
             for (const RirInstruction& instruction : function.Instructions) {
                 output << "    ";
                 if (instruction.Op == RirOp::Return) {
@@ -131,6 +152,14 @@ namespace Rivet {
                 }
                 output << "int $" << instruction.Result << " = " << OperationName(instruction.Op);
                 if (instruction.Op == RirOp::Const) output << ' ' << instruction.Immediate;
+                else if (instruction.Op == RirOp::Call) {
+                    output << " @" << instruction.Callee << '(';
+                    for (std::size_t index = 0; index < instruction.Arguments.size(); ++index) {
+                        if (index) output << ", ";
+                        output << '$' << instruction.Arguments[index];
+                    }
+                    output << ')';
+                }
                 else if (instruction.Op == RirOp::Negate || instruction.Op == RirOp::Identity)
                     output << " $" << instruction.Left;
                 else output << " $" << instruction.Left << ", $" << instruction.Right;

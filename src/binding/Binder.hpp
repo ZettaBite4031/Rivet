@@ -81,6 +81,8 @@ namespace Rivet {
             const BinaryExpressionSyntax& syntax
         );
 
+        [[nodiscard]] std::unique_ptr<BoundExpression> BindCallExpression(const CallExpressionSyntax& syntax);
+
         const SourceFile& m_Source;
         DiagnosticBag& m_Diagnostics;
 

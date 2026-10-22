@@ -21,6 +21,7 @@ namespace Rivet {
         AssignmentStatement,
         LiteralExpression,
         NameExpression,
+        CallExpression,
         UnaryExpression,
         BinaryExpression,
         ParenthesizedExpression,
@@ -69,6 +70,20 @@ namespace Rivet {
         [[nodiscard]] SyntaxKind Kind() const noexcept override;
         [[nodiscard]] SourceSpan Span() const noexcept override;
         Token NameToken;
+    };
+
+    class CallExpressionSyntax final : public ExpressionSyntax {
+    public:
+        CallExpressionSyntax(Token name, Token open_paren,
+            std::vector<std::unique_ptr<ExpressionSyntax>> arguments,
+            std::vector<Token> commas, Token close_paren) noexcept;
+        [[nodiscard]] SyntaxKind Kind() const noexcept override;
+        [[nodiscard]] SourceSpan Span() const noexcept override;
+        Token NameToken;
+        Token OpenParenToken;
+        std::vector<std::unique_ptr<ExpressionSyntax>> Arguments;
+        std::vector<Token> CommaTokens;
+        Token CloseParenToken;
     };
 
     class ErrorExpressionSyntax final : public ExpressionSyntax {
@@ -168,7 +183,14 @@ namespace Rivet {
 
     class FunctionDefinitionSyntax final : public SyntaxNode {
     public:
-        FunctionDefinitionSyntax(Token type_token, Token identifier_token, Token open_paren_token, Token close_paren_token, std::unique_ptr<BlockStatementSyntax> body) noexcept;
+        struct Parameter {
+            Token TypeToken;
+            Token NameToken;
+            Token CommaToken;
+        };
+        FunctionDefinitionSyntax(Token type_token, Token identifier_token, Token open_paren_token,
+            std::vector<Parameter> parameters, Token close_paren_token,
+            std::unique_ptr<BlockStatementSyntax> body) noexcept;
 
         [[nodiscard]] SyntaxKind Kind() const noexcept override;
         [[nodiscard]] SourceSpan Span() const noexcept override;
@@ -176,6 +198,7 @@ namespace Rivet {
         Token TypeToken;
         Token IdentifierToken;
         Token OpenParenToken;
+        std::vector<Parameter> Parameters;
         Token CloseParenToken;
         std::unique_ptr<BlockStatementSyntax> Body;
     };

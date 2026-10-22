@@ -35,6 +35,14 @@ namespace {
                 break;
             }
 
+            case BoundNodeKind::CallExpression: {
+                const auto& call = static_cast<const BoundCallExpression&>(expression);
+                output << "Call " << call.Callee << " : int\n";
+                for (const auto& argument : call.Arguments)
+                    WriteExpression(output, *argument, depth + 1, locals);
+                break;
+            }
+
             case BoundNodeKind::UnaryExpression: {
                 const auto& unary =
                     static_cast<const BoundUnaryExpression&>(expression);
@@ -137,8 +145,12 @@ namespace Rivet {
 
         for (const auto& function : unit.Functions) {
             WriteIndent(output, 1);
-            output << "Function " << function->Symbol.Name
-                << "() -> " << function->Symbol.ReturnType->Name;
+            output << "Function " << function->Symbol.Name << '(';
+            for (std::size_t index = 0; index < function->Symbol.ParameterCount; ++index) {
+                if (index) output << ", ";
+                output << "int " << function->Locals.at(index).Name;
+            }
+            output << ") -> " << function->Symbol.ReturnType->Name;
 
             if (function->IsEntryPoint)
                 output << " [entry]";

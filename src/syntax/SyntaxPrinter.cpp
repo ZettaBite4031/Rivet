@@ -84,6 +84,12 @@ namespace {
                 WriteTokenLine(output, source, function.TypeToken, depth + 1);
                 WriteTokenLine(output, source, function.IdentifierToken, depth + 1);
                 WriteTokenLine(output, source, function.OpenParenToken, depth + 1);
+                for (const auto& parameter : function.Parameters) {
+                    WriteTokenLine(output, source, parameter.TypeToken, depth + 1);
+                    WriteTokenLine(output, source, parameter.NameToken, depth + 1);
+                    if (!parameter.CommaToken.Span.Empty())
+                        WriteTokenLine(output, source, parameter.CommaToken, depth + 1);
+                }
                 WriteTokenLine(output, source, function.CloseParenToken, depth + 1);
                 WriteNode(output, source, *function.Body, depth + 1);
                 break;
@@ -135,6 +141,19 @@ namespace {
             case SyntaxKind::NameExpression: {
                 const auto& expression = static_cast<const NameExpressionSyntax&>(node);
                 WriteTokenLine(output, source, expression.NameToken, depth + 1);
+                break;
+            }
+
+            case SyntaxKind::CallExpression: {
+                const auto& call = static_cast<const CallExpressionSyntax&>(node);
+                WriteTokenLine(output, source, call.NameToken, depth + 1);
+                WriteTokenLine(output, source, call.OpenParenToken, depth + 1);
+                for (std::size_t index = 0; index < call.Arguments.size(); ++index) {
+                    WriteNode(output, source, *call.Arguments[index], depth + 1);
+                    if (index < call.CommaTokens.size())
+                        WriteTokenLine(output, source, call.CommaTokens[index], depth + 1);
+                }
+                WriteTokenLine(output, source, call.CloseParenToken, depth + 1);
                 break;
             }
 

@@ -24,6 +24,7 @@ namespace Rivet {
         OpenBrace,
         CloseBrace,
         Semicolon,
+        Comma,
         Dot,
         Equals,
 

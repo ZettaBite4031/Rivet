@@ -23,6 +23,7 @@ namespace Rivet {
         case SyntaxKind::AssignmentStatement:     return "AssignmentStatement";
         case SyntaxKind::LiteralExpression:       return "LiteralExpression";
         case SyntaxKind::NameExpression:          return "NameExpression";
+        case SyntaxKind::CallExpression:          return "CallExpression";
         case SyntaxKind::UnaryExpression:         return "UnaryExpression";
         case SyntaxKind::BinaryExpression:        return "BinaryExpression";
         case SyntaxKind::ParenthesizedExpression: return "ParenthesizedExpression";
@@ -64,6 +65,16 @@ namespace Rivet {
     NameExpressionSyntax::NameExpressionSyntax(Token name) noexcept : NameToken(name) {}
     SyntaxKind NameExpressionSyntax::Kind() const noexcept { return SyntaxKind::NameExpression; }
     SourceSpan NameExpressionSyntax::Span() const noexcept { return NameToken.Span; }
+
+    CallExpressionSyntax::CallExpressionSyntax(Token name, Token open_paren,
+        std::vector<std::unique_ptr<ExpressionSyntax>> arguments,
+        std::vector<Token> commas, Token close_paren) noexcept
+        : NameToken(name), OpenParenToken(open_paren), Arguments(std::move(arguments)),
+          CommaTokens(std::move(commas)), CloseParenToken(close_paren) {}
+    SyntaxKind CallExpressionSyntax::Kind() const noexcept { return SyntaxKind::CallExpression; }
+    SourceSpan CallExpressionSyntax::Span() const noexcept {
+        return CoveringSpan(NameToken.Span, CloseParenToken.Span);
+    }
 
     ErrorExpressionSyntax::ErrorExpressionSyntax(SourceSpan error_span) noexcept
         : ErrorSpan(error_span) {}
@@ -150,8 +161,13 @@ namespace Rivet {
         return CoveringSpan(OpenBraceToken.Span, CloseBraceToken.Span);
     }
 
-    FunctionDefinitionSyntax::FunctionDefinitionSyntax(Token type_token, Token identifier_token, Token open_paren_token, Token close_paren_token, std::unique_ptr<BlockStatementSyntax> body) noexcept 
-        : TypeToken(type_token), IdentifierToken(identifier_token), OpenParenToken(open_paren_token), CloseParenToken(close_paren_token), Body(std::move(body)) { assert(Body != nullptr); }
+    FunctionDefinitionSyntax::FunctionDefinitionSyntax(Token type_token, Token identifier_token,
+        Token open_paren_token, std::vector<Parameter> parameters, Token close_paren_token,
+        std::unique_ptr<BlockStatementSyntax> body) noexcept
+        : TypeToken(type_token), IdentifierToken(identifier_token), OpenParenToken(open_paren_token),
+          Parameters(std::move(parameters)), CloseParenToken(close_paren_token), Body(std::move(body)) {
+        assert(Body != nullptr);
+    }
 
     SyntaxKind FunctionDefinitionSyntax::Kind() const noexcept {
         return SyntaxKind::FunctionDefinition;

@@ -31,6 +31,9 @@ namespace Rivet {
         DuplicateLocal = 205,
         UnknownLocal = 206,
         ImmutableLocal = 207,
+        UnknownFunction = 208,
+        ArgumentCountMismatch = 209,
+        InvalidEntryPoint = 210,
     };
 
     struct Diagnostic {

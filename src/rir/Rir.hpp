@@ -11,7 +11,7 @@
 
 namespace Rivet {
     enum class RirOp : std::uint8_t {
-        Const, Identity, Negate, Add, Subtract, Multiply, Divide, Return,
+        Const, Identity, Negate, Add, Subtract, Multiply, Divide, Call, Return,
     };
 
     // The lowerer emits dense virtual registers. The verifier also accepts
@@ -23,11 +23,14 @@ namespace Rivet {
         std::size_t Right{ 0 };
         std::int32_t Immediate{ 0 };
         SourceSpan Span{};
+        std::string Callee{};
+        std::vector<std::size_t> Arguments{};
     };
 
     struct RirFunction {
         std::string Name;
         std::vector<RirInstruction> Instructions{};
+        std::size_t ParameterCount{ 0 };
     };
 
     struct RirModule {

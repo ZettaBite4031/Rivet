@@ -25,6 +25,7 @@ namespace Rivet {
         case TokenKind::OpenBrace:      return "OpenBrace";
         case TokenKind::CloseBrace:     return "CloseBrace";
         case TokenKind::Semicolon:      return "Semicolon";
+        case TokenKind::Comma:          return "Comma";
         case TokenKind::Dot:            return "Dot";
         case TokenKind::Equals:         return "Equals";
 
